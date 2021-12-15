@@ -1,0 +1,8 @@
+.env
+/__pycache__/
+/.idea/
+/finished/
+/venv/
+/downloads/
+/videos/
+narration.mp3
