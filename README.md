@@ -11,7 +11,9 @@ After running these through a glitchy gauntlet and combining with some spooky so
 You will need API keys for SMMRY (free) and OpenAI (if using). Include them in an .env file like  
 OPENAI_API_KEY = "your key"  
 SMMRY_API_KEY = "your key"  
-From there, start a virtual environment, pip install requirements, and run python main.py.  
+From there, start a virtual environment, pip install requirements, and run python main.py. OpenAI is optional, SMMRY is required.  
+An important note, due to bugs with some of the libraries that are being used that I had to fix manually, this program might not work as intended for you.  
+You'll need to either get newer versions of these libraries where the bugs are fixed, or fix them yourself.  
 
 ## Future Goals:
 * Use OpenAI to either smooth out the summarized text or add some commentary to it.  
