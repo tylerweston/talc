@@ -26,7 +26,7 @@ import urllib.parse
 import urllib.request
 from hashlib import sha1
 
-import glitchart
+# import glitchart
 
 import numpy as np
 import pyttsx3
@@ -325,16 +325,16 @@ def get_random_clips(keywords, wiki_page_title):
                     continue
                 original_clip = VideoFileClip(path_to_download)
 
-                # TODO: This hangs when we try to compose the video later
-                if GLITCH_VIDEOS:
-                    if random.random() <= GLITCH_VIDEOS_PERCENT:
-                        console.print("Glitching video...")
-                        glitchart.mp4(f'"{path_to_download}"', inplace=True)
-                        console.print("Done glitching video...")
-                # # TODO:
-                # # Now, we have a glitched copy and a regular copy, we should splice MOSTLY the unglitched copy,
-                # # but also, a little bit of the glitched copy together, add the audio back in, and press it one
-                # # more time?
+                # # TODO: This hangs when we try to compose the video later
+                # if GLITCH_VIDEOS:
+                #     if random.random() <= GLITCH_VIDEOS_PERCENT:
+                #         console.print("Glitching video...")
+                #         glitchart.mp4(f'"{path_to_download}"', inplace=True)
+                #         console.print("Done glitching video...")
+                # # # TODO:
+                # # # Now, we have a glitched copy and a regular copy, we should splice MOSTLY the unglitched copy,
+                # # # but also, a little bit of the glitched copy together, add the audio back in, and press it one
+                # # # more time?
 
                 number_got += 1
                 # Grab a few snippets from the video
@@ -380,6 +380,7 @@ def get_random_clips(keywords, wiki_page_title):
                 console.print("[red]Warning[/red]: Couldn't get video")
                 continue
 
+    console.print(f"Got [bold green]{len(random_video_clips)}[/bold green] videos")
     return random_video_clips
 
 
