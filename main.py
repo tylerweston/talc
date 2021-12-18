@@ -18,6 +18,7 @@
 #   - Maybe some command line options? Or a config file?
 
 import os
+import argparse
 import json
 import random
 import re
@@ -680,7 +681,7 @@ def comp_video(images_list, random_video_clips, title, summary):
     return
 
 
-def make_video(use_article=None):
+def make_video(use_article=None, args=None):
 
     # Project name
     # talc
@@ -695,7 +696,7 @@ def make_video(use_article=None):
     title, wiki_page_title, wiki_page_content = get_article(use_article)
     keywords, summary, summary_hash_text = summarize_article(wiki_page_content)
 
-    if USE_OPENAI:
+    if args.use_openai:
         opening, closing = open_ai_stuff(wiki_page_title)
         narration_text = wiki_page_title + "," + opening + ", " + summary + ", " + closing + ", ," + summary_hash_text
     else:
@@ -707,10 +708,10 @@ def make_video(use_article=None):
     images_list = get_images(keywords, wiki_page_title)
 
     # Detect faces first since they won't be detectede if they are all glitched out first
-    if DETECT_FACES:
+    if not args.no_detect_faces:
         detect_and_sort_faces(images_list)
 
-    if GLITCH_IMAGES:
+    if args.glitch_images:
         glitch_images(images_list)
 
     resize_images(images_list)
@@ -804,8 +805,60 @@ def open_ai_stuff(topic):
 
 
 def main():
-    make_video()
-    exit()
+    parser = argparse.ArgumentParser(description="TALC video generator")
+    parser.add_argument(
+        "--article",
+        "-a",
+        help="The article to use",
+        default=None,
+        type=str,
+    )
+    parser.add_argument(
+        "--use_openai",
+        "-o",
+        help="Use OpenAI prompts",
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
+        "--glitch_images",
+        "-g",
+        help="Glitch images",
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
+        "--no_detect_faces",
+        "-f",
+        help="Detect faces",
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
+        "--cleanup",
+        "-c",
+        help="Cleanup on finish",
+        default=True,
+        action="store_true",
+    )
+    parser.add_argument(
+        "--num_vids",
+        "-n",
+        help="Number of videos to make",
+        default=1,
+        type=int,
+    )
+    args = parser.parse_args()
+    if args.article and args.num_vids > 1:
+        console.print("[bold red]Error[/bold red]: Cannot use --article and --num_vids together")
+        console.print("Just supply an an article name to make a single video")
+        exit()
+
+    for _ in range(args.num_vids):
+        make_video(use_article=args.article, args=args)
+
+    # make_video()
+    # exit()
     # num_videos = 5
     # for i in range(num_videos):
     #     print(f"Making video {i + 1} of {num_videos}")
