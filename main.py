@@ -53,7 +53,6 @@ USE_OPENAI = False
 NUM_SMMRY_SENTENCES = 12
 CLEANUP_ON_FINISH = True
 MINIMUM_ARTICLE_LENGTH = 10000
-GLITCH_IMAGES = True
 GLITCH_VIDEOS = False
 GLITCH_VIDEOS_PERCENT = 0.3
 DETECT_FACES = True
@@ -62,7 +61,9 @@ noise_glitching = False
 
 size = 1280, 720
 console = Console()
-
+__prog__ = "TALC"
+__author__ = "Tyler Weston"
+__version__ = '0.0.5'
 
 if USE_OPENAI:
     try:
@@ -146,7 +147,7 @@ def get_article(use_article=None):
                 wiki_page_title = value["title"]
                 wiki_page_content = value["extract"]
             except KeyError as ke:
-                console.print("[bold red]Error[/bold red]: Error getting article")
+                console.print("[bold red]Warning[/bold red]: Problem getting article, trying again")
                 console.print(str(ke))
                 console.print(value)
                 continue
@@ -247,7 +248,7 @@ def summarize_article(wiki_page_content):
 def get_random_clips(keywords, wiki_page_title):
     # Grab random youtube video clips
     random_video_clips = []
-    number_of_random_videos_to_get = 9
+    number_of_random_videos_to_get = 15
     number_got = 0
 
     try:
@@ -339,7 +340,7 @@ def get_random_clips(keywords, wiki_page_title):
 
                 number_got += 1
                 # Grab a few snippets from the video
-                for i in range(0, 5):
+                for i in range(0, 3):
 
                     start_time = random.randint(0, min(1, youtube.length - 10))
                     end_time = min(youtube.length, start_time + random.randint(1, 3))
@@ -584,6 +585,46 @@ def make_narration(text):
         speech_engine.runAndWait()
 
 
+def apply_image_fx(frames):
+    # Note we can abstract this a bit since this is repeated code from what we do in video glitches
+    # so bounce this out to another function that takes ANY clip, applies a random fx, and then returns that clip
+    return_frames = []
+    for frame in frames:
+        if (random.random() < 0.7):
+            return_frames.append(frame)
+            continue
+        # choose a random effect from all available moviepy vfx
+        param1 = random.random()
+        param2 = random.random()
+        # choose random x and y values that are within the size of the clip
+        x = random.randint(0, size[0] - 1)
+        y = random.randint(0, size[1] - 1)
+        # choose another set of random x and y values that are within the size of the clip
+        x2 = random.randint(0, size[0] - 1)
+        y2 = random.randint(0, size[1] - 1)
+        video_fx_funcs = [
+            lambda clip: clip.fx(vfx.accel_decel, new_duration=None, abruptness=param1, soonness=param2),
+            lambda clip: clip.fx(vfx.blackwhite),
+            lambda clip: clip.fx(vfx.blackwhite, RGB='CRT_phosphor'),
+            lambda clip: clip.fx(vfx.colorx, param1),
+            lambda clip: clip.fx(vfx.freeze, total_duration=param1),
+            lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(x, y , x2, y2)),
+            lambda clip: clip.fx(vfx.gamma_corr, gamma=param1),
+            lambda clip: clip.fx(vfx.invert_colors),
+            lambda clip: clip.fx(vfx.mirror_x),
+            lambda clip: clip.fx(vfx.mirror_y),
+            lambda clip: clip.fx(vfx.painting, 1+(param1/2),param2/ 100.0),
+            lambda clip: clip.fx(vfx.speedx, factor=param1*2),
+            lambda clip: clip.fx(vfx.supersample, d=int((param1+1) * 10), nframes=int((param2+1) * 30)),               
+            lambda clip: clip.fx(vfx.time_mirror),
+            lambda clip: clip.fx(vfx.time_symmetrize),
+        ]    
+        random_func = random.choice(video_fx_funcs)
+        frame = random_func(frame)
+        return_frames.append(frame)
+    return return_frames
+
+
 def comp_video(images_list, random_video_clips, title, summary):
     # Create video
     with console.status("[bold green]Creating video...",spinner='arc'):
@@ -597,8 +638,14 @@ def comp_video(images_list, random_video_clips, title, summary):
                 frames.append(new_clip)
             except:
                 continue
+        # apply some random video fx to frames
+        frames = apply_image_fx(frames)
+
         frames.extend(random_video_clips)
         random.shuffle(frames)
+
+
+
         frames = [title_card_clip] + frames
         # visual_clip = concatenate_videoclips(frames, method="chain")
         visual_clip = concatenate_videoclips(frames, method="compose")
@@ -630,9 +677,9 @@ def comp_video(images_list, random_video_clips, title, summary):
             chosen_soundtrack == "soundtracks/talc_soundtrack3.wav"
             or chosen_soundtrack == "soundtracks/talc_soundtrack5.wav"
         ):
-            soundtrack_clip = soundtrack_clip.volumex(0.1)
+            soundtrack_clip = soundtrack_clip.volumex(0.08)
         else:
-            soundtrack_clip = soundtrack_clip.volumex(0.2)
+            soundtrack_clip = soundtrack_clip.volumex(0.15)
 
         soundtrack_clip = fx.all.audio_fadein(soundtrack_clip, 2)
         soundtrack_clip = fx.all.audio_fadeout(soundtrack_clip, 2)
@@ -711,7 +758,7 @@ def make_video(use_article=None, args=None):
     if not args.no_detect_faces:
         detect_and_sort_faces(images_list)
 
-    if args.glitch_images:
+    if not args.no_glitch_images:
         glitch_images(images_list)
 
     resize_images(images_list)
@@ -721,7 +768,7 @@ def make_video(use_article=None, args=None):
 
     comp_video(images_list, random_video_clips, title, summary)
 
-    if CLEANUP_ON_FINISH:
+    if not args.no_cleanup:
         console.print("Cleaning up images and audio...")
         cleanup()
 
@@ -732,20 +779,20 @@ def cleanup():
     try:
         shutil.rmtree("downloads")
     except Exception as e:
-        console.print("[bold red]Error[/bold red]: Cannot remove downloads folder")
+        console.print("[bold red]Warning[/bold red]: Cannot remove downloads folder")
         console.print(str(e))
 
 
     try:
         shutil.rmtree("videos")
     except Exception as e:
-        console.print("[bold red]Error[/bold red]: Cannot remove videos folder")
+        console.print("[bold red]Warning[/bold red]: Cannot remove videos folder")
         console.print(str(e))
 
     try:
         os.remove("narration.mp3")
     except Exception as e:
-        console.print("[bold red]Error[/bold red]: Cannot remove narration.mp3")
+        console.print("[bold red]Warning[/bold red]: Cannot remove narration.mp3")
         console.print(str(e))
 
 
@@ -821,9 +868,9 @@ def main():
         action="store_true",
     )
     parser.add_argument(
-        "--glitch_images",
+        "--no_glitch_images",
         "-g",
-        help="Glitch images",
+        help="Don't glitch images",
         default=False,
         action="store_true",
     )
@@ -835,10 +882,10 @@ def main():
         action="store_true",
     )
     parser.add_argument(
-        "--cleanup",
+        "--no_cleanup",
         "-c",
-        help="Cleanup on finish",
-        default=True,
+        help="Don't cleanup on finish",
+        default=False,
         action="store_true",
     )
     parser.add_argument(
@@ -848,29 +895,32 @@ def main():
         default=1,
         type=int,
     )
+    parser.add_argument(
+        "--silent_mode",
+        "-s",
+        help="Suppress all output to screen",
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
+        "--version",
+        "-v",
+        help="Print version",
+        action='version',
+        version=f'{__prog__} - {__author__} - {__version__}',    
+    )
     args = parser.parse_args()
     if args.article and args.num_vids > 1:
         console.print("[bold red]Error[/bold red]: Cannot use --article and --num_vids together")
         console.print("Just supply an an article name to make a single video")
         exit()
 
-    for _ in range(args.num_vids):
+    if args.silent_mode:
+        console.quiet = True
+
+    for i, _ in enumerate(range(args.num_vids)):
+        console.print(f"Making video [bold green]{i+1}[/bold green]/[bold green]{args.num_vids}[/bold green]")
         make_video(use_article=args.article, args=args)
-
-    # make_video()
-    # exit()
-    # num_videos = 5
-    # for i in range(num_videos):
-    #     print(f"Making video {i + 1} of {num_videos}")
-    #     make_video()
-    # exit()
-
-    # video_list = ["2020", "Ring_(mathematics)", "Philosophy_of_science", "Problem_of_induction"]
-    # for v in video_list:
-    #     print(f"Making video {v}")
-    #     make_video(v)
-    #     print()
-    # exit()
 
 
 if __name__ == "__main__":
