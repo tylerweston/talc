@@ -58,6 +58,7 @@ GLITCH_VIDEOS_PERCENT = 0.3
 DETECT_FACES = True
 USE_MOVIEPY_VIDEO_FX = True
 noise_glitching = False
+MOVIEPY_VIDEO_FX_PERCENT = 0.7
 
 size = 1280, 720
 console = Console()
@@ -348,7 +349,7 @@ def get_random_clips(keywords, wiki_page_title):
                     random_youtube_subclip = random_youtube_subclip.set_fps(24)
                     random_youtube_subclip = random_youtube_subclip.resize(newsize=size)
                     # sometimes apply a moviepy vfx
-                    if USE_MOVIEPY_VIDEO_FX:
+                    if USE_MOVIEPY_VIDEO_FX and random.random() <= MOVIEPY_VIDEO_FX_PERCENT:
                         # choose a random effect from all available moviepy vfx
                         param1 = random.random()
                         param2 = random.random()
@@ -385,6 +386,10 @@ def get_random_clips(keywords, wiki_page_title):
     console.print(f"Got [bold green]{len(random_video_clips)}[/bold green] videos")
     return random_video_clips
 
+
+def apply_moviefx(clip):
+
+    pass
 
 def get_images(keywords, wiki_page_title):
     # Get images based on keywords
@@ -588,40 +593,42 @@ def make_narration(text):
 def apply_image_fx(frames):
     # Note we can abstract this a bit since this is repeated code from what we do in video glitches
     # so bounce this out to another function that takes ANY clip, applies a random fx, and then returns that clip
+    # Run through three times so some images get even extra glitched
     return_frames = []
-    for frame in frames:
-        if (random.random() < 0.7):
+    for _ in range(3):
+        for frame in frames:
+            if (random.random() < 0.8):
+                return_frames.append(frame)
+                continue
+            # choose a random effect from all available moviepy vfx
+            param1 = random.random()
+            param2 = random.random()
+            # choose random x and y values that are within the size of the clip
+            x = random.randint(0, size[0] - 1)
+            y = random.randint(0, size[1] - 1)
+            # choose another set of random x and y values that are within the size of the clip
+            x2 = random.randint(0, size[0] - 1)
+            y2 = random.randint(0, size[1] - 1)
+            video_fx_funcs = [
+                lambda clip: clip.fx(vfx.accel_decel, new_duration=None, abruptness=param1, soonness=param2),
+                lambda clip: clip.fx(vfx.blackwhite),
+                lambda clip: clip.fx(vfx.blackwhite, RGB='CRT_phosphor'),
+                lambda clip: clip.fx(vfx.colorx, param1),
+                # lambda clip: clip.fx(vfx.freeze, total_duration=param1),
+                # lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(x, y , x2, y2)),
+                lambda clip: clip.fx(vfx.gamma_corr, gamma=param1),
+                lambda clip: clip.fx(vfx.invert_colors),
+                lambda clip: clip.fx(vfx.mirror_x),
+                lambda clip: clip.fx(vfx.mirror_y),
+                lambda clip: clip.fx(vfx.painting, 1+(param1/2),param2/ 100.0),
+                # lambda clip: clip.fx(vfx.speedx, factor=param1*2),
+                # lambda clip: clip.fx(vfx.supersample, d=int((param1+1) * 10), nframes=int((param2+1) * 30)),               
+                # lambda clip: clip.fx(vfx.time_mirror),
+                # lambda clip: clip.fx(vfx.time_symmetrize),
+            ]    
+            random_func = random.choice(video_fx_funcs)
+            frame = random_func(frame)
             return_frames.append(frame)
-            continue
-        # choose a random effect from all available moviepy vfx
-        param1 = random.random()
-        param2 = random.random()
-        # choose random x and y values that are within the size of the clip
-        x = random.randint(0, size[0] - 1)
-        y = random.randint(0, size[1] - 1)
-        # choose another set of random x and y values that are within the size of the clip
-        x2 = random.randint(0, size[0] - 1)
-        y2 = random.randint(0, size[1] - 1)
-        video_fx_funcs = [
-            lambda clip: clip.fx(vfx.accel_decel, new_duration=None, abruptness=param1, soonness=param2),
-            lambda clip: clip.fx(vfx.blackwhite),
-            lambda clip: clip.fx(vfx.blackwhite, RGB='CRT_phosphor'),
-            lambda clip: clip.fx(vfx.colorx, param1),
-            lambda clip: clip.fx(vfx.freeze, total_duration=param1),
-            lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(x, y , x2, y2)),
-            lambda clip: clip.fx(vfx.gamma_corr, gamma=param1),
-            lambda clip: clip.fx(vfx.invert_colors),
-            lambda clip: clip.fx(vfx.mirror_x),
-            lambda clip: clip.fx(vfx.mirror_y),
-            lambda clip: clip.fx(vfx.painting, 1+(param1/2),param2/ 100.0),
-            lambda clip: clip.fx(vfx.speedx, factor=param1*2),
-            lambda clip: clip.fx(vfx.supersample, d=int((param1+1) * 10), nframes=int((param2+1) * 30)),               
-            lambda clip: clip.fx(vfx.time_mirror),
-            lambda clip: clip.fx(vfx.time_symmetrize),
-        ]    
-        random_func = random.choice(video_fx_funcs)
-        frame = random_func(frame)
-        return_frames.append(frame)
     return return_frames
 
 
