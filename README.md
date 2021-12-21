@@ -13,7 +13,8 @@ OPENAI_API_KEY = "your key"
 SMMRY_API_KEY = "your key"  
 From there, start a virtual environment, pip install requirements, and run python main.py. OpenAI is optional, SMMRY is required.  
 An important note, due to bugs with some of the libraries that are being used that I had to fix manually, this program might not work as intended for you.  
-You'll need to either get newer versions of these libraries where the bugs are fixed, or fix them yourself.
+You'll need to either get newer versions of these libraries where the bugs are fixed, or fix them yourself.  
+Furthur, you will need to get the pretrained model for the semantic segmentation done by pixellib. Download the file from [here](https://github.com/ayoolaolafenwa/PixelLib/releases/download/1.1/deeplabv3_xception_tf_dim_ordering_tf_kernels.h5) and place it in the root folder.  
 
 ## Contributions:
 Please do! If you are in any way shape or form interested in helping out, feel free to reach out to me or open a PR.  

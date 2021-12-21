@@ -18,6 +18,7 @@
 #   - Maybe some command line options? Or a config file?
 
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import argparse
 import json
 import random
@@ -47,6 +48,8 @@ import moviepy.video.fx.all as vfx
 from pixelsort import pixelsort
 from decouple import UndefinedValueError, config
 from rich.console import Console
+from rich.progress import track
+from pixellib.semantic import semantic_segmentation
 
 USE_PROMPTS = False
 USE_OPENAI = False
@@ -437,75 +440,43 @@ def get_audio():
 
 
 
-def detect_and_sort_faces(images_list):
-    detect_str = f"[bold green]Detecting faces ({len(images_list)})..."
-    with console.status(detect_str, spinner='arc'):
-        interval_func_choices = ["random", "edges", "threshold", "waves"]
-        sorting_func_choices = [
-            "lightness",
-            "hue",
-            "saturation",
-            "intensity",
-            "minimum",
-        ]
-        rand_angle = random.randint(0, 360)
-        rand_sort_amt = random.randint(0, 75)
-        face_cascade = cv2.CascadeClassifier(
-            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-        )
-        for img in images_list:
-            if random.random() < 0.5:
-                continue
+def detect_and_glitch_semantic(images_list):
+    # with console.status("[bold green]Performing semantic glitching...",spinner='arc'):
+    segment_image = semantic_segmentation()
+    segment_image.load_pascalvoc_model("deeplabv3_xception_tf_dim_ordering_tf_kernels.h5")
+    interval_func_choices = ["random", "edges", "threshold", "waves"]
+    sorting_func_choices = [
+        "lightness",
+        "hue",
+        "saturation",
+        "intensity",
+        "minimum",
+    ]
+    # Detect points of interest in an image and glitch them
+    for img in track(images_list, "[bold green]Performing semantic glitching...", refresh_per_second=1):
+        if random.random() < 0.8:
+            continue
+        try:
             image = cv2.imread(img)
-            if image is None:
-                continue
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(
-                gray, scaleFactor=1.3, minNeighbors=3, minSize=(30, 30)
-            )
-            if len(faces) == 0:
-                continue
+            # orig_size = image.size
+            segvalues, segoverlay = segment_image.segmentAsPascalvoc(img)
+            im_grey = cv2.cvtColor(segoverlay, cv2.COLOR_BGR2GRAY)
+            ret, thresh = cv2.threshold(im_grey, 127, 255, 0)
+            # cv2.imwrite("test_seg.jpg", thresh)
 
-            mask = np.zeros(shape=[image.shape[0], image.shape[1], 2], dtype=np.uint8)
-
-            # faces is a list of rectangles of form Rect(x, y, w, h)
-            # create mask image
-            for (x, y, w, h) in faces:
-                rand_float = random.uniform(0.4, 0.8)
-                cv2.circle(
-                    mask,
-                    (int(x + w / 2), int(y + h / 2)),
-                    int(min(w, h) * rand_float),
-                    (255, 255, 255),
-                    -1,
-                )
-                # sometimes we can also do a bit more!!
-                if random.random() < 0.2:
-                    # create a box from left to right
-                    cv2.rectangle(
-                        mask,
-                        (0, y),
-                        (mask.shape[0], y + h),
-                        (255, 255, 255),
-                        -1,
-                    )
-                if random.random() < 0.2:
-                    # create a box from top to bottom
-                    cv2.rectangle(
-                        mask,
-                        (x, 0),
-                        (x + w, mask.shape[1]),
-                        (255, 255, 255),
-                        -1,
-                    )
-
-            mask_image = Image.fromarray(mask)
+            mask_image = Image.fromarray(thresh)
+            # resize make_image to orig_size
+            # mask_image = mask_image.resize(orig_size)
             if random.random() < 0.9:
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             if random.random() < 0.1:
                 image =cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
             original_image = Image.fromarray(image)
             # pixelsort image with generated mask
+            rand_angle = random.randint(0, 360)
+            rand_sort_amt = random.randint(0, 75)
+            # console.print("mask_image shape: " + str(mask_image.size))
+            # console.print("original_image shape: " + str(original_image.size))
             original_image = pixelsort(
                 original_image,
                 mask_image,
@@ -515,9 +486,106 @@ def detect_and_sort_faces(images_list):
                 angle=rand_angle,
             )
             original_image = original_image.convert("RGB")
-
+            # original_image.show()
             # Now, we need to write original_image over the one we have stored
             original_image.save(img)
+        except Exception as e:
+            # console.print("\n[red]Warning[/red]: Problem with semantic detection")
+            # console.print(e)
+            continue
+
+
+    # # delete test_seg.jpg
+    # try:
+    #     os.remove("test_seg.jpg")
+    # except:
+    #     pass
+
+
+def detect_and_sort_faces(images_list):
+    detect_str = f"[bold green]Detecting faces ({len(images_list)})..."
+    # with console.status(detect_str, spinner='arc'):
+    interval_func_choices = ["random", "edges", "threshold", "waves"]
+    sorting_func_choices = [
+        "lightness",
+        "hue",
+        "saturation",
+        "intensity",
+        "minimum",
+    ]
+
+    face_cascade = cv2.CascadeClassifier(
+        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    )
+    for img in track(images_list, detect_str, refresh_per_second=1):
+
+        if random.random() < 0.5:
+            continue
+        image = cv2.imread(img)
+
+        if image is None:
+            continue
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(
+            gray, scaleFactor=1.3, minNeighbors=3, minSize=(30, 30)
+        )
+        if len(faces) == 0:
+            continue
+
+        mask = np.zeros(shape=[image.shape[0], image.shape[1], 2], dtype=np.uint8)
+
+        # faces is a list of rectangles of form Rect(x, y, w, h)
+        # create mask image
+        for (x, y, w, h) in faces:
+            rand_float = random.uniform(0.4, 0.8)
+            cv2.circle(
+                mask,
+                (int(x + w / 2), int(y + h / 2)),
+                int(min(w, h) * rand_float),
+                (255, 255, 255),
+                -1,
+            )
+            # sometimes we can also do a bit more!!
+            if random.random() < 0.2:
+                # create a box from left to right
+                cv2.rectangle(
+                    mask,
+                    (0, y),
+                    (mask.shape[0], y + h),
+                    (255, 255, 255),
+                    -1,
+                )
+            if random.random() < 0.2:
+                # create a box from top to bottom
+                cv2.rectangle(
+                    mask,
+                    (x, 0),
+                    (x + w, mask.shape[1]),
+                    (255, 255, 255),
+                    -1,
+                )
+
+        mask_image = Image.fromarray(mask)
+        if random.random() < 0.9:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        if random.random() < 0.1:
+            image =cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        original_image = Image.fromarray(image)
+        # pixelsort image with generated mask
+        rand_angle = random.randint(0, 360)
+        rand_sort_amt = random.randint(0, 75)
+        original_image = pixelsort(
+            original_image,
+            mask_image,
+            randomness=rand_sort_amt,
+            sorting_function=random.choice(sorting_func_choices),
+            interval_function=random.choice(interval_func_choices),
+            angle=rand_angle,
+        )
+        original_image = original_image.convert("RGB")
+
+        # Now, we need to write original_image over the one we have stored
+        original_image.save(img)
 
 
 def glitch_images(images_list):
@@ -768,6 +836,10 @@ def make_video(use_article=None, args=None):
     if not args.no_glitch_images:
         glitch_images(images_list)
 
+    # Semantic glitching
+    if not args.no_semantic_glitches:
+        detect_and_glitch_semantic(images_list)
+
     resize_images(images_list)
 
     # Video clips
@@ -916,6 +988,13 @@ def main():
         action='version',
         version=f'{__prog__} - {__author__} - {__version__}',    
     )
+    parser.add_argument(
+        "--no_semantic_glitches",
+        "-x",
+        help="Don't glitch semantic",
+        default=False,
+        action="store_true",
+    )
     args = parser.parse_args()
     if args.article and args.num_vids > 1:
         console.print("[bold red]Error[/bold red]: Cannot use --article and --num_vids together")
@@ -926,7 +1005,9 @@ def main():
         console.quiet = True
 
     for i, _ in enumerate(range(args.num_vids)):
-        console.print(f"Making video [bold green]{i+1}[/bold green]/[bold green]{args.num_vids}[/bold green]")
+        display_str = "Making video..." if args.num_vids == 1 else \
+            f"Making video [bold green]{i+1}[/bold green]/[bold green]{args.num_vids}[/bold green]..."
+        console.print(display_str)
         make_video(use_article=args.article, args=args)
 
 
