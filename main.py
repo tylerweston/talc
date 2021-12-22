@@ -9,16 +9,16 @@
 #   - Organize files
 #   - More soundtracks
 #   - Strip out invalid filename characters such as :, ?, *, and others
-#   - Remove API keys aand push to github
 #   - How to add some more sound fx to the videos
 #       - https://freesound.org/docs/api/overview.html
 #       - Needs to be less specific, maybe only search ONE keyword at a time?
 #       - If the API doesn't return anything, ON TO THE NEXT
-#   - Convert soundtrack .wav files to .mp3
-#   - Maybe some command line options? Or a config file?
+#   - Do some video glitching / overlay sort of stuff? Look into pixellib
+#       - Semantic segmentation to remove video foreground and overlay over
+#         some other clip we have?
+#   - Remove angle brackets from summary (not allowed by youtube)
 
 import os
-
 import argparse
 import json
 import random
@@ -28,6 +28,8 @@ import shutil
 import urllib.parse
 import urllib.request
 from hashlib import sha1
+from datetime import datetime
+import nltk
 
 # import glitchart
 
@@ -53,6 +55,8 @@ from rich.progress import track
 # Suppress tensorflow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from pixellib.semantic import semantic_segmentation
+from nltk.corpus import wordnet
+
 
 USE_PROMPTS = False
 USE_OPENAI = False
@@ -241,7 +245,14 @@ def summarize_article(wiki_page_content):
     remove_keywords_list = [x.strip() for x in content]
     # Remove not useful keywords
     keywords = [k for k in keywords if k.lower() not in remove_keywords_list]
-
+    for _ in range(5):
+        syn = get_synonyms(random.choice(keywords))
+        if len(syn) == 0:
+            continue
+        new_syn = random.choice(syn)
+        keywords.append(new_syn)
+    # remove duplicates
+    keywords = list(set(keywords))
     # Generate summary hash, use first 12 hex digits of a
     # SHA1 hash generated from the summary text
     summary_hash = sha1()
@@ -249,6 +260,18 @@ def summarize_article(wiki_page_content):
     summary_hash_text = str(summary_hash.hexdigest())[:12]
     console.print(f"Got hash: [bold green]{summary_hash_text}")
     return keywords, summary, summary_hash_text
+
+def get_synonyms(word):
+    # Get synonyms
+    synonyms = []
+    for syn in wordnet.synsets(word):
+        for l in syn.lemmas():
+            synonyms.append(l.name())
+
+    syns = list(set(synonyms))
+    # for each word in syns, replace _ with space
+    syns = [re.sub("_", " ", s) for s in syns]
+    return syns
 
 def get_random_clips(keywords, wiki_page_title):
     # Grab random youtube video clips
@@ -417,7 +440,7 @@ def get_images(keywords, wiki_page_title):
         keywords_str = keywords_str.replace(':', '')
         arguments = {
             "keywords": keywords_str,
-            "limit": 10,
+            "limit": 8,
             "print_urls": False,
             "silent_mode": True,
         }
@@ -509,7 +532,7 @@ def detect_and_sort_faces(images_list):
     )
     for img in track(images_list, detect_str, refresh_per_second=1):
 
-        if random.random() < 0.5:
+        if random.random() < 0.8:
             continue
         image = cv2.imread(img)
 
@@ -690,14 +713,55 @@ def apply_motion(frames):
     # so bounce this out to another function that takes ANY clip, applies a random fx, and then returns that clip
     # Run through three times so some images get even extra glitched
     return_frames = []
+
     for _ in range(3):
         for frame in frames:
             if (random.random() < 0.8):
                 return_frames.append(frame)
                 continue
-            frame = zoom_in_effect(frame)
+            zoom_ratio = random.random() / 20.0
+            video_motion_fx = [
+                lambda clip: zoom_out_effect(clip, zoom_ratio=zoom_ratio),
+                lambda clip: zoom_in_effect(clip, zoom_ratio=zoom_ratio),
+            ]
+            # frame = zoom_in_effect(frame, zoom_ratio=zoom_ratio)
+            random_func = random.choice(video_motion_fx)
+            frame = random_func(frame)
             return_frames.append(frame)
     return return_frames
+
+
+def zoom_out_effect(clip, zoom_ratio=0.04):
+    def effect(get_frame, t):
+        img = Image.fromarray(get_frame(t))
+        base_size = img.size
+
+        new_size = [
+            # if this doesn't work, change 0.8 to 1.2?
+            math.ceil(img.size[0] / (0.8 + (zoom_ratio * t))),
+            math.ceil(img.size[1] / (0.8 + (zoom_ratio * t)))
+        ]
+
+        # The new dimensions must be even.
+        new_size[0] = new_size[0] + (new_size[0] % 2)
+        new_size[1] = new_size[1] + (new_size[1] % 2)
+
+        img = img.resize(new_size, Image.LANCZOS)
+
+        x = math.ceil((new_size[0] - base_size[0]) / 2)
+        y = math.ceil((new_size[1] - base_size[1]) / 2)
+
+        img = img.crop([
+            x, y, new_size[0] - x, new_size[1] - y
+        ]).resize(base_size, Image.LANCZOS)
+
+        result = np.array(img)
+        img.close()
+
+        return result
+
+    return clip.fl(effect)
+
 
 
 def zoom_in_effect(clip, zoom_ratio=0.04):
@@ -729,14 +793,13 @@ def zoom_in_effect(clip, zoom_ratio=0.04):
         img.close()
 
         return result
-
     return clip.fl(effect)
 
 
 
 def comp_video(images_list, random_video_clips, title, summary):
     # Create video
-    with console.status("[bold green]Creating video...",spinner='arc'):
+    with console.status("[bold green]Creating video...", spinner='arc'):
         title_card_clip = ImageClip("title_card.png", duration=2)
         # frames = [title_card_clip]
         frames = []
@@ -818,10 +881,7 @@ def comp_video(images_list, random_video_clips, title, summary):
             logger=None,
         )
 
-        with open(
-            f"finished/{movie_title}.txt", "w", encoding="utf-8"
-        ) as summary_text_file:
-            summary_text_file.write(summary)
+
 
         # print("Glitching video...")
         # glitchart.mp4(f"finished/{movie_title}.mp4")
@@ -835,7 +895,7 @@ def comp_video(images_list, random_video_clips, title, summary):
                 f.close()
             except:
                 pass
-    return
+    return movie_title
 
 def make_video(use_article=None, args=None):
 
@@ -879,13 +939,25 @@ def make_video(use_article=None, args=None):
     # Video clips
     random_video_clips = get_random_clips(keywords, wiki_page_title)
 
-    comp_video(images_list, random_video_clips, title, summary)
+    movie_title = comp_video(images_list, random_video_clips, title, summary)
+    generate_and_write_summary(movie_title, summary, keywords)
 
     if not args.no_cleanup:
         console.print("Cleaning up images and audio...")
         cleanup()
 
     console.print(f"[bold green]Done!")
+
+def generate_and_write_summary(movie_title, summary, keywords):
+    summary_text = f"{movie_title}:\n{summary}\n\nkeywords: {', '.join(keywords)}\n\n"
+    # get todays date and format it
+    today = datetime.now()
+    # today_formatted = today.strftime("%Y-%m-%d")
+    summary_text += f"the aleatoric learning channel\n{today}\n"
+    with open(
+        f"finished/{movie_title}.txt", "w", encoding="utf-8"
+    ) as summary_text_file:
+        summary_text_file.write(summary_text)
 
 def cleanup():
     try:
@@ -1035,6 +1107,13 @@ def main():
     if args.silent_mode:
         console.quiet = True
 
+    with console.status("[bold green]Loading nltk...", spinner='arc'):
+        nltk.download('wordnet', quiet=True)
+        nltk.download('omw-1.4', quiet=True)
+
+    # today = datetime.now()
+    # today_formatted = today.strftime("%Y-%m-%d")
+    # console.print(f"{today_formatted}")
     for i, _ in enumerate(range(args.num_vids)):
         display_str = "Making video..." if args.num_vids == 1 else \
             f"Making video [bold green]{i+1}[/bold green]/[bold green]{args.num_vids}[/bold green]..."
