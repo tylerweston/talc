@@ -18,11 +18,12 @@
 #   - Maybe some command line options? Or a config file?
 
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 import argparse
 import json
 import random
 import re
+import math
 import shutil
 import urllib.parse
 import urllib.request
@@ -49,6 +50,8 @@ from pixelsort import pixelsort
 from decouple import UndefinedValueError, config
 from rich.console import Console
 from rich.progress import track
+# Suppress tensorflow warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from pixellib.semantic import semantic_segmentation
 
 USE_PROMPTS = False
@@ -186,7 +189,6 @@ def get_article(use_article=None):
     # print(wiki_page_content)
     return title, wiki_page_title, wiki_page_content
 
-
 def summarize_article(wiki_page_content):
     # Summarize
 
@@ -247,7 +249,6 @@ def summarize_article(wiki_page_content):
     summary_hash_text = str(summary_hash.hexdigest())[:12]
     console.print(f"Got hash: [bold green]{summary_hash_text}")
     return keywords, summary, summary_hash_text
-
 
 def get_random_clips(keywords, wiki_page_title):
     # Grab random youtube video clips
@@ -389,7 +390,6 @@ def get_random_clips(keywords, wiki_page_title):
     console.print(f"Got [bold green]{len(random_video_clips)}[/bold green] videos")
     return random_video_clips
 
-
 def apply_moviefx(clip):
 
     pass
@@ -433,12 +433,9 @@ def get_images(keywords, wiki_page_title):
     console.print(f"Got [bold green]{len(images_list)}[/bold green] images")
     return images_list
 
-
 def get_audio():
     # TODO: get random audio clips to splice into video
     pass
-
-
 
 def detect_and_glitch_semantic(images_list):
     # with console.status("[bold green]Performing semantic glitching...",spinner='arc'):
@@ -458,15 +455,11 @@ def detect_and_glitch_semantic(images_list):
             continue
         try:
             image = cv2.imread(img)
-            # orig_size = image.size
             segvalues, segoverlay = segment_image.segmentAsPascalvoc(img)
             im_grey = cv2.cvtColor(segoverlay, cv2.COLOR_BGR2GRAY)
             ret, thresh = cv2.threshold(im_grey, 127, 255, 0)
-            # cv2.imwrite("test_seg.jpg", thresh)
 
             mask_image = Image.fromarray(thresh)
-            # resize make_image to orig_size
-            # mask_image = mask_image.resize(orig_size)
             if random.random() < 0.9:
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             if random.random() < 0.1:
@@ -475,8 +468,6 @@ def detect_and_glitch_semantic(images_list):
             # pixelsort image with generated mask
             rand_angle = random.randint(0, 360)
             rand_sort_amt = random.randint(0, 75)
-            # console.print("mask_image shape: " + str(mask_image.size))
-            # console.print("original_image shape: " + str(original_image.size))
             original_image = pixelsort(
                 original_image,
                 mask_image,
@@ -500,7 +491,6 @@ def detect_and_glitch_semantic(images_list):
     #     os.remove("test_seg.jpg")
     # except:
     #     pass
-
 
 def detect_and_sort_faces(images_list):
     detect_str = f"[bold green]Detecting faces ({len(images_list)})..."
@@ -587,7 +577,6 @@ def detect_and_sort_faces(images_list):
         # Now, we need to write original_image over the one we have stored
         original_image.save(img)
 
-
 def glitch_images(images_list):
     with console.status("[bold green]Glitching images...",spinner='arc'):
         glitcher = ImageGlitcher()
@@ -605,7 +594,6 @@ def glitch_images(images_list):
 
             except:
                 pass
-
 
 def resize_images(images_list):
     # 1280 x 720
@@ -642,7 +630,6 @@ def resize_images(images_list):
             except:
                 images_list.remove(image_file)
 
-
 def make_narration(text):
     with console.status("[bold green]Making narration...",spinner='arc'):
         # Convert to speech
@@ -656,7 +643,6 @@ def make_narration(text):
             "narration.mp3",
         )
         speech_engine.runAndWait()
-
 
 def apply_image_fx(frames):
     # Note we can abstract this a bit since this is repeated code from what we do in video glitches
@@ -699,6 +685,54 @@ def apply_image_fx(frames):
             return_frames.append(frame)
     return return_frames
 
+def apply_motion(frames):
+    # Note we can abstract this a bit since this is repeated code from what we do in video glitches
+    # so bounce this out to another function that takes ANY clip, applies a random fx, and then returns that clip
+    # Run through three times so some images get even extra glitched
+    return_frames = []
+    for _ in range(3):
+        for frame in frames:
+            if (random.random() < 0.8):
+                return_frames.append(frame)
+                continue
+            frame = zoom_in_effect(frame)
+            return_frames.append(frame)
+    return return_frames
+
+
+def zoom_in_effect(clip, zoom_ratio=0.04):
+    # From: https://gist.github.com/mowshon/2a0664fab0ae799734594a5e91e518d5
+    # Thank you, mowshon!
+    def effect(get_frame, t):
+        img = Image.fromarray(get_frame(t))
+        base_size = img.size
+
+        new_size = [
+            math.ceil(img.size[0] * (1 + (zoom_ratio * t))),
+            math.ceil(img.size[1] * (1 + (zoom_ratio * t)))
+        ]
+
+        # The new dimensions must be even.
+        new_size[0] = new_size[0] + (new_size[0] % 2)
+        new_size[1] = new_size[1] + (new_size[1] % 2)
+
+        img = img.resize(new_size, Image.LANCZOS)
+
+        x = math.ceil((new_size[0] - base_size[0]) / 2)
+        y = math.ceil((new_size[1] - base_size[1]) / 2)
+
+        img = img.crop([
+            x, y, new_size[0] - x, new_size[1] - y
+        ]).resize(base_size, Image.LANCZOS)
+
+        result = np.array(img)
+        img.close()
+
+        return result
+
+    return clip.fl(effect)
+
+
 
 def comp_video(images_list, random_video_clips, title, summary):
     # Create video
@@ -715,6 +749,7 @@ def comp_video(images_list, random_video_clips, title, summary):
                 continue
         # apply some random video fx to frames
         frames = apply_image_fx(frames)
+        frames = apply_motion(frames)
 
         frames.extend(random_video_clips)
         random.shuffle(frames)
@@ -802,7 +837,6 @@ def comp_video(images_list, random_video_clips, title, summary):
                 pass
     return
 
-
 def make_video(use_article=None, args=None):
 
     # Project name
@@ -853,7 +887,6 @@ def make_video(use_article=None, args=None):
 
     console.print(f"[bold green]Done!")
 
-
 def cleanup():
     try:
         shutil.rmtree("downloads")
@@ -873,7 +906,6 @@ def cleanup():
     except Exception as e:
         console.print("[bold red]Warning[/bold red]: Cannot remove narration.mp3")
         console.print(str(e))
-
 
 def open_ai_stuff(topic):
     topic.strip()
@@ -928,7 +960,6 @@ def open_ai_stuff(topic):
     # opening = re.sub(r"\W+", "", opening)
     # closing = re.sub(r"\W+", "", closing)
     return opening, closing
-
 
 def main():
     parser = argparse.ArgumentParser(description="TALC video generator")
@@ -1009,7 +1040,6 @@ def main():
             f"Making video [bold green]{i+1}[/bold green]/[bold green]{args.num_vids}[/bold green]..."
         console.print(display_str)
         make_video(use_article=args.article, args=args)
-
 
 if __name__ == "__main__":
     main()
