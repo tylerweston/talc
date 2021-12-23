@@ -16,46 +16,53 @@
 #   - Do some video glitching / overlay sort of stuff? Look into pixellib
 #       - Semantic segmentation to remove video foreground and overlay over
 #         some other clip we have?
-#   - Remove angle brackets from summary (not allowed by youtube)
 
 import os
+import sys
 import argparse
-import json
-import random
-import re
-import math
-import shutil
-import urllib.parse
-import urllib.request
-from hashlib import sha1
-from datetime import datetime
-import nltk
-
-# import glitchart
-
-import numpy as np
-import pyttsx3
-import pytube
-import requests
-import openai
-import cv2
-
-from PIL import Image, ImageOps
-from bs4 import BeautifulSoup
-from glitch_this import ImageGlitcher
-from google_images_download import google_images_download
-from moviepy.audio import fx
-# from moviepy.decorators import audio_video_fx
-from moviepy.editor import *
-import moviepy.video.fx.all as vfx
-from pixelsort import pixelsort
-from decouple import UndefinedValueError, config
 from rich.console import Console
-from rich.progress import track
-# Suppress tensorflow warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-from pixellib.semantic import semantic_segmentation
-from nltk.corpus import wordnet
+
+# This is all we need if we want to just get --help or --version so check for those first
+args = [s.lower() for s in sys.argv[1:]]
+if not ("--help" in args or "-h" in args or "--version" in args or "-v" in args):
+
+
+    import json
+    import random
+    import re
+    import math
+    import shutil
+    import urllib.parse
+    import urllib.request
+    from hashlib import sha1
+    from datetime import datetime
+    import nltk
+
+    # import glitchart
+
+    import numpy as np
+    import pyttsx3
+    import pytube
+    import requests
+    import openai
+    import cv2
+
+    from PIL import Image, ImageOps
+    from bs4 import BeautifulSoup
+    from glitch_this import ImageGlitcher
+    from google_images_download import google_images_download
+    from moviepy.audio import fx
+    # from moviepy.decorators import audio_video_fx
+    from moviepy.editor import *
+    import moviepy.video.fx.all as vfx
+    from pixelsort import pixelsort
+    from decouple import UndefinedValueError, config
+
+    from rich.progress import track
+    # Suppress tensorflow warnings
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    from pixellib.semantic import semantic_segmentation
+    from nltk.corpus import wordnet
 
 
 USE_PROMPTS = False
@@ -69,6 +76,9 @@ DETECT_FACES = True
 USE_MOVIEPY_VIDEO_FX = True
 noise_glitching = False
 MOVIEPY_VIDEO_FX_PERCENT = 0.7
+
+spinner_choice = random.choice(['aesthetic', 'arc', 'arrow3', 'betaWave', 'balloon',
+'bounce', 'bouncingBar', 'circle', 'dots', 'line', 'squish', 'toggle10', 'pong'])
 
 size = 1280, 720
 console = Console()
@@ -132,7 +142,7 @@ def audio_noiseglitch(clip):
 
 def get_article(use_article=None):
     # print("Finding random Wikipedia article", end="")
-    with console.status("[bold green]Finding random Wikipedia article...",spinner='arc'):
+    with console.status("[bold green]Finding random Wikipedia article...",spinner=spinner_choice):
         while True:
             if use_article is None:
                 # Get random wikipedia page
@@ -259,6 +269,9 @@ def summarize_article(wiki_page_content):
     summary_hash.update(summary.encode("utf-8"))
     summary_hash_text = str(summary_hash.hexdigest())[:12]
     console.print(f"Got hash: [bold green]{summary_hash_text}")
+    # remove all angle brackets from summary
+    summary.replace("<", "")
+    summary.replace(">", "")
     return keywords, summary, summary_hash_text
 
 def get_synonyms(word):
@@ -276,7 +289,7 @@ def get_synonyms(word):
 def get_random_clips(keywords, wiki_page_title):
     # Grab random youtube video clips
     random_video_clips = []
-    number_of_random_videos_to_get = 15
+    number_of_random_videos_to_get = 25
     number_got = 0
 
     try:
@@ -289,7 +302,7 @@ def get_random_clips(keywords, wiki_page_title):
     #   - Keep track of number of tries / keyword combos checked, once exhausted, if we don't have enough
     #   videos, just keep going with whatever we have.
 
-    with console.status("[bold green]Getting random videos...", spinner='arc'):
+    with console.status("[bold green]Getting random videos...", spinner=spinner_choice):
         while number_got < number_of_random_videos_to_get:
             # Search for list of videos
             random_keyword_combo = None
@@ -345,7 +358,6 @@ def get_random_clips(keywords, wiki_page_title):
                 continue
 
             if video is not None:
-                # print(f"Got video {number_got + 1}/{number_of_random_videos_to_get}")
                 path_to_download = f"videos/{video.default_filename}"
                 try:
                     video.download("videos")
@@ -368,7 +380,7 @@ def get_random_clips(keywords, wiki_page_title):
 
                 number_got += 1
                 # Grab a few snippets from the video
-                for i in range(0, 3):
+                for i in range(0, 2):
 
                     start_time = random.randint(0, min(1, youtube.length - 10))
                     end_time = min(youtube.length, start_time + random.randint(1, 3))
@@ -417,9 +429,9 @@ def apply_moviefx(clip):
 
     pass
 
-def get_images(keywords, wiki_page_title):
+def get_images(keywords, wiki_page_title, args=args):
     # Get images based on keywords
-    with console.status("[bold green]Getting random images...",spinner='arc'):
+    with console.status("[bold green]Getting random images...",spinner=spinner_choice):
         response = google_images_download.googleimagesdownload()
 
         # make most of the keywords based on the article title
@@ -440,7 +452,7 @@ def get_images(keywords, wiki_page_title):
         keywords_str = keywords_str.replace(':', '')
         arguments = {
             "keywords": keywords_str,
-            "limit": 8,
+            "limit": args.images_per_search,
             "print_urls": False,
             "silent_mode": True,
         }
@@ -461,7 +473,7 @@ def get_audio():
     pass
 
 def detect_and_glitch_semantic(images_list):
-    # with console.status("[bold green]Performing semantic glitching...",spinner='arc'):
+    # with console.status("[bold green]Performing semantic glitching...",spinner=spinner_choice):
     segment_image = semantic_segmentation()
     segment_image.load_pascalvoc_model("deeplabv3_xception_tf_dim_ordering_tf_kernels.h5")
     interval_func_choices = ["random", "edges", "threshold", "waves"]
@@ -517,7 +529,7 @@ def detect_and_glitch_semantic(images_list):
 
 def detect_and_sort_faces(images_list):
     detect_str = f"[bold green]Detecting faces ({len(images_list)})..."
-    # with console.status(detect_str, spinner='arc'):
+    # with console.status(detect_str, spinner=spinner_choice):
     interval_func_choices = ["random", "edges", "threshold", "waves"]
     sorting_func_choices = [
         "lightness",
@@ -601,7 +613,7 @@ def detect_and_sort_faces(images_list):
         original_image.save(img)
 
 def glitch_images(images_list):
-    with console.status("[bold green]Glitching images...",spinner='arc'):
+    with console.status("[bold green]Glitching images...",spinner=spinner_choice):
         glitcher = ImageGlitcher()
         images_to_glitch = len(images_list) // 5
         for _ in range(images_to_glitch):
@@ -622,7 +634,7 @@ def resize_images(images_list):
     # 1280 x 720
     # TODO: Sometimes this still kicks out bad images?!
     target_width, target_height = size
-    with console.status("[bold green]Resizing images...",spinner='arc'):
+    with console.status("[bold green]Resizing images...",spinner=spinner_choice):
         for image_file in images_list:
             try:
                 # if ".webp" in image_file or ".svg" in image_file or ".gif" in image_file:
@@ -654,7 +666,7 @@ def resize_images(images_list):
                 images_list.remove(image_file)
 
 def make_narration(text):
-    with console.status("[bold green]Making narration...",spinner='arc'):
+    with console.status("[bold green]Making narration...",spinner=spinner_choice):
         # Convert to speech
         speech_engine = pyttsx3.init()
         # Get list of all available voices and choose a random one
@@ -799,7 +811,7 @@ def zoom_in_effect(clip, zoom_ratio=0.04):
 
 def comp_video(images_list, random_video_clips, title, summary):
     # Create video
-    with console.status("[bold green]Creating video...", spinner='arc'):
+    with console.status("[bold green]Creating video...", spinner=spinner_choice):
         title_card_clip = ImageClip("title_card.png", duration=2)
         # frames = [title_card_clip]
         frames = []
@@ -816,10 +828,27 @@ def comp_video(images_list, random_video_clips, title, summary):
 
         frames.extend(random_video_clips)
         random.shuffle(frames)
+        TextClip.list('font')
+        video_title = TextClip(
+            title, 
+            font='Amiri-Bold', 
+            fontsize=70, 
+            color='white',
+            stroke_color='black',
+            stroke_width=2, 
+            method='label', 
+            align='Center', 
+            size=(1280, 720)
+        )
+        title_duration = random.random() * 2.5 + 1
+        video_clip = random.choice(frames)
+        video_clip = video_clip.set_duration(title_duration)
+        video_title = video_title.set_duration(title_duration)
+        video_comped = CompositeVideoClip([video_clip, video_title.set_pos(("center", "bottom"))])
+        video_comped = video_comped.set_duration(title_duration)
+        # video_comped = video_comped.set_duration(video_clip.duration)
 
-
-
-        frames = [title_card_clip] + frames
+        frames = [title_card_clip, video_comped] + frames
         # visual_clip = concatenate_videoclips(frames, method="chain")
         visual_clip = concatenate_videoclips(frames, method="compose")
         # visual_clip = visual_clip.fx(vfx.resize(visual_clip, size))
@@ -921,7 +950,7 @@ def make_video(use_article=None, args=None):
     make_narration(narration_text)
 
     # Images
-    images_list = get_images(keywords, wiki_page_title)
+    images_list = get_images(keywords, wiki_page_title, args=args)
 
     # Detect faces first since they won't be detectede if they are all glitched out first
     if not args.no_detect_faces:
@@ -1078,6 +1107,13 @@ def main():
         type=int,
     )
     parser.add_argument(
+        "--images_per_search",
+        "-i",
+        help="Number of images to search for per keyword",
+        default=4,
+        type=int,
+    )
+    parser.add_argument(
         "--silent_mode",
         "-s",
         help="Suppress all output to screen",
@@ -1107,7 +1143,7 @@ def main():
     if args.silent_mode:
         console.quiet = True
 
-    with console.status("[bold green]Loading nltk...", spinner='arc'):
+    with console.status("[bold green]Loading nltk...", spinner=spinner_choice):
         nltk.download('wordnet', quiet=True)
         nltk.download('omw-1.4', quiet=True)
 
