@@ -62,6 +62,7 @@ if not ("--help" in args or "-h" in args or "--version" in args or "-v" in args)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     from pixellib.semantic import semantic_segmentation
     from nltk.corpus import wordnet
+    from nltk.corpus import stopwords
 
 
 USE_PROMPTS = False
@@ -243,11 +244,12 @@ def summarize_article(wiki_page_content):
     
     keywords = [urllib.parse.unquote(k) for k in keywords]
    
-    # Read in remove keywords from file
-    with open("remove_keywords") as f:
-        content = f.readlines()
-    remove_keywords_list = [x.strip() for x in content]
-    
+    # # Read in remove keywords from file
+    # with open("remove_keywords") as f:
+    #     content = f.readlines()
+    # remove_keywords_list = [x.strip() for x in content]
+    remove_keywords_list = list(set(stopwords.words("english")))
+
     # Remove not useful keywords
     keywords = [k for k in keywords if k.lower() not in remove_keywords_list]
     for _ in range(5):
@@ -809,7 +811,7 @@ def comp_video(images_list, random_video_clips, title, summary):
         frames = []
         for f in images_list:
             try:
-                new_clip = ImageClip(f, duration=random.random() * 2.0 + 0.5)
+                new_clip = ImageClip(f, duration=random.random() * 2.5)
                 new_clip.set_fps(24)
                 frames.append(new_clip)
             except:
