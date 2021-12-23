@@ -2,7 +2,6 @@
 #   - More sound options? Add some random sounds
 #   - Better article selection somehow?
 #   - Voice glitches
-#   - Add title card for individual videos
 #   - Different soundtracks to choose from
 #   - Get different voices?
 #   - Refactor code out of one giant script
@@ -59,7 +58,7 @@ if not ("--help" in args or "-h" in args or "--version" in args or "-v" in args)
     from decouple import UndefinedValueError, config
 
     from rich.progress import track
-    # Suppress tensorflow warnings
+    # Suppress tensorflow warnings, tf is imported by pixellib
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     from pixellib.semantic import semantic_segmentation
     from nltk.corpus import wordnet
@@ -174,16 +173,12 @@ def get_article(use_article=None):
                 continue
             # Remove everything after == References ==
             wiki_page_content = wiki_page_content.split("== References ==")[0].strip()
+            # TODO: Refactor, this logic below is confusing
             if use_article is None and len(wiki_page_content) < MINIMUM_ARTICLE_LENGTH:
+                # this article is too short, but we can ignore this if we've provided the article.
                 continue
-                # if use_article is None:
-                #     # print(".", end="")
-                #     # time.sleep(random.randint(0, 2));
-                #     continue
-                # else:
-                #     print(f"Article {use_article} is too short!")
-                #     exit(0)
             else:
+                # We have a good article, either it's the right length or we're using a provided article
                 if USE_PROMPTS:
                     console.print(f"\naccept article {wiki_page_title}? y/n:", end='')
                     res = input()
@@ -199,8 +194,6 @@ def get_article(use_article=None):
     wiki_page_content = re.sub("===.*===", "", wiki_page_content)
     wiki_page_content = re.sub("==.*==", "", wiki_page_content)
 
-    # print("Wiki text:")
-    # print(wiki_page_content)
     return title, wiki_page_title, wiki_page_content
 
 def summarize_article(wiki_page_content):
@@ -217,7 +210,6 @@ def summarize_article(wiki_page_content):
     # • SM_QUESTION_AVOID	        Optional, sentences with question will be excluded.
     # • SM_EXCLAMATION_AVOID	    Optional, sentences with exclamation marks will be excluded.
 
-    # TODO: Make API_KEY to be secret!
     API_ENDPOINT = "https://api.smmry.com"
     try:
         API_KEY = config("SMMRY_API_KEY")
@@ -239,7 +231,7 @@ def summarize_article(wiki_page_content):
     smmry_response = requests.post(
         url=API_ENDPOINT, params=params, data=data, headers=header_params
     )
-    # TODO: api may return error codes 0, 1, 2, or 3. see: https://smmry.com/api
+
     smmry_json = json.loads(smmry_response.content)
     try:
         summary = smmry_json["sm_api_content"]
@@ -248,11 +240,14 @@ def summarize_article(wiki_page_content):
         console.print("[bold red]Error[/bold red]: Problem with results from smmry API!")
         console.print(str(e))
         exit(1)
+    
     keywords = [urllib.parse.unquote(k) for k in keywords]
+   
     # Read in remove keywords from file
     with open("remove_keywords") as f:
         content = f.readlines()
     remove_keywords_list = [x.strip() for x in content]
+    
     # Remove not useful keywords
     keywords = [k for k in keywords if k.lower() not in remove_keywords_list]
     for _ in range(5):
@@ -261,17 +256,19 @@ def summarize_article(wiki_page_content):
             continue
         new_syn = random.choice(syn)
         keywords.append(new_syn)
+    
     # remove duplicates
     keywords = list(set(keywords))
+
     # Generate summary hash, use first 12 hex digits of a
     # SHA1 hash generated from the summary text
     summary_hash = sha1()
     summary_hash.update(summary.encode("utf-8"))
     summary_hash_text = str(summary_hash.hexdigest())[:12]
     console.print(f"Got hash: [bold green]{summary_hash_text}")
-    # remove all angle brackets from summary
-    summary.replace("<", "")
-    summary.replace(">", "")
+
+    # remove all angle brackets from summary, youtube descriptions don't like them
+    summary = re.sub(r'(<*>*)*', '', summary)
     return keywords, summary, summary_hash_text
 
 def get_synonyms(word):
@@ -742,7 +739,6 @@ def apply_motion(frames):
             return_frames.append(frame)
     return return_frames
 
-
 def zoom_out_effect(clip, zoom_ratio=0.04):
     def effect(get_frame, t):
         img = Image.fromarray(get_frame(t))
@@ -773,8 +769,6 @@ def zoom_out_effect(clip, zoom_ratio=0.04):
         return result
 
     return clip.fl(effect)
-
-
 
 def zoom_in_effect(clip, zoom_ratio=0.04):
     # From: https://gist.github.com/mowshon/2a0664fab0ae799734594a5e91e518d5
@@ -807,8 +801,6 @@ def zoom_in_effect(clip, zoom_ratio=0.04):
         return result
     return clip.fl(effect)
 
-
-
 def comp_video(images_list, random_video_clips, title, summary):
     # Create video
     with console.status("[bold green]Creating video...", spinner=spinner_choice):
@@ -817,7 +809,7 @@ def comp_video(images_list, random_video_clips, title, summary):
         frames = []
         for f in images_list:
             try:
-                new_clip = ImageClip(f, duration=random.random() * 2.5)
+                new_clip = ImageClip(f, duration=random.random() * 2.0 + 0.5)
                 new_clip.set_fps(24)
                 frames.append(new_clip)
             except:
@@ -828,11 +820,11 @@ def comp_video(images_list, random_video_clips, title, summary):
 
         frames.extend(random_video_clips)
         random.shuffle(frames)
-        TextClip.list('font')
+        # TextClip.list('font')
         video_title = TextClip(
             title, 
             font='Amiri-Bold', 
-            fontsize=70, 
+            # fontsize=70, 
             color='white',
             stroke_color='black',
             stroke_width=2, 
@@ -846,12 +838,9 @@ def comp_video(images_list, random_video_clips, title, summary):
         video_title = video_title.set_duration(title_duration)
         video_comped = CompositeVideoClip([video_clip, video_title.set_pos(("center", "bottom"))])
         video_comped = video_comped.set_duration(title_duration)
-        # video_comped = video_comped.set_duration(video_clip.duration)
 
         frames = [title_card_clip, video_comped] + frames
-        # visual_clip = concatenate_videoclips(frames, method="chain")
         visual_clip = concatenate_videoclips(frames, method="compose")
-        # visual_clip = visual_clip.fx(vfx.resize(visual_clip, size))
 
         # Add some silence to end of narration
         narration_clip = AudioFileClip("narration.mp3")
@@ -910,8 +899,6 @@ def comp_video(images_list, random_video_clips, title, summary):
             logger=None,
         )
 
-
-
         # print("Glitching video...")
         # glitchart.mp4(f"finished/{movie_title}.mp4")
         # print("Done glitching video...")
@@ -927,14 +914,6 @@ def comp_video(images_list, random_video_clips, title, summary):
     return movie_title
 
 def make_video(use_article=None, args=None):
-
-    # Project name
-    # talc
-    # Project ID
-    # talc-323003
-    # Project number
-    # 451707394224
-
     # TALC video generator
 
     # Narration
