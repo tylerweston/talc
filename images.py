@@ -52,6 +52,46 @@ def get_images(keywords, wiki_page_title, passed_args):
     console.print(f"Got [bold green]{len(images_list)}[/bold green] images")
     return images_list
 
+def detect_and_make_masked_images(images_list):
+    segment_image = semantic_segmentation()
+    segment_image.load_pascalvoc_model("deeplabv3_xception_tf_dim_ordering_tf_kernels.h5")
+    for img in track(images_list, "[bold green]Detecting and making masked image...", refresh_per_second=1):
+        if random.random() < 0.7:
+            continue
+        image = cv2.imread(img)
+        try:
+            segvalues, segoverlay = segment_image.segmentAsPascalvoc(img)
+        except ValueError as e:
+            # Not enough values to unpack (expected 3, got 2)
+            continue
+        im_grey = cv2.cvtColor(segoverlay, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(im_grey, 127, 255, 0)
+        mask_image = Image.fromarray(thresh)
+
+        second_image = random.choice(images_list)
+        second_image = cv2.imread(second_image)
+        # resize second_image to match mask_image
+        second_image = cv2.resize(second_image, (mask_image.size[0], mask_image.size[1]))
+        # masked_image = cv2.bitwise_and(second_image, image, mask=thresh) if random.random() < 0.5 else cv2.bitwise_and(image, second_image, mask=thresh)
+        mask_funcs = [
+            lambda arg1, arg2, mask: cv2.bitwise_and(arg1, arg2, mask),
+            lambda arg1, arg2, mask: cv2.bitwise_and(arg2, arg1, mask),
+            lambda arg1, arg2, mask: cv2.bitwise_or(arg1, arg2, mask),
+            lambda arg1, arg2, mask: cv2.bitwise_or(arg2, arg1, mask),
+            lambda arg1, arg2, mask: cv2.bitwise_xor(arg1, arg2, mask),
+            lambda arg1, arg2, mask:
+                cv2.bitwise_and(arg1, arg2, mask=cv2.bitwise_not(mask)) + 
+                cv2.bitwise_and(arg1, arg2, mask=mask)
+        ]
+        f = random.choice(mask_funcs)
+        masked_image = f(image, second_image, mask=thresh)
+        if random.random() < 0.5:
+            masked_image = masked_image + second_image
+        # convert to PIL image
+        masked_image = Image.fromarray(masked_image)
+        # save the image
+        masked_image.save(img)
+
 def detect_and_glitch_semantic(images_list):
     # with console.status("[bold green]Performing semantic glitching...",spinner=spinner_choice):
     segment_image = semantic_segmentation()
@@ -244,7 +284,6 @@ def resize_images(images_list):
                 rgbimg.save(image_file, format=img.format)
             except:
                 images_list.remove(image_file)
-
 
 def apply_image_fx(frames):
     # Note we can abstract this a bit since this is repeated code from what we do in video glitches

@@ -113,6 +113,8 @@ def make_video(use_article=None, args=None):
     if not args.no_semantic_glitches:
         detect_and_glitch_semantic(images_list)
 
+    detect_and_make_masked_images(images_list)
+
     resize_images(images_list)
 
     # Video clips
@@ -120,6 +122,7 @@ def make_video(use_article=None, args=None):
 
     movie_title = comp_video(images_list, random_video_clips, title, summary)
     generate_and_write_summary(movie_title, summary, keywords)
+    console.print(f"Finished writing [bold green]{movie_title}[/bold green]")
 
     if not args.no_cleanup:
         console.print("Cleaning up images and audio...")
