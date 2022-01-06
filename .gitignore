@@ -5,8 +5,11 @@
 /venv/
 /downloads/
 /videos/
+/soundtracks/
 narration.mp3
 temp-audio.m4a
 deeplabv3_xception_tf_dim_ordering_tf_kernels.h5
 mask_rcnn_coco.h5
 .vscode/
+*.mp4
+test_*.py
