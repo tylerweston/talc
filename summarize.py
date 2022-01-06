@@ -15,6 +15,50 @@ from main import console, spinner_choice
 from config import *
 import pyttsx3
 
+from pathlib import Path
+
+from TTS.config import load_config
+from TTS.utils.manage import ModelManager
+from TTS.utils.synthesizer import Synthesizer
+
+def coqui_tts(text_to_synthesize, output_file):
+    # ..\wikivids\venv\Lib\site-packages\TTS
+    # TODO: Can we change the voice here I suppose? We get a list of available voices
+    # and choose from them?
+    default_voice=r"tts_models/en/ljspeech/tacotron2-DDC"
+    path = Path(__file__).parent / r"venv/Lib/site-packages/TTS/.models.json"
+    print(path)
+    manager = ModelManager(path)
+    model_path, config_path, model_item = manager.download_model(default_voice)
+    vocoder_name = model_item["default_vocoder"]
+    vocoder_path, vocoder_config_path, _ = manager.download_model(vocoder_name)
+    speakers_file_path = None
+
+    #  load models
+    synthesizer = Synthesizer(
+        tts_checkpoint=model_path,
+        tts_config_path=config_path,
+        tts_speakers_file=speakers_file_path,
+        tts_languages_file=None,
+        vocoder_checkpoint=vocoder_path,
+        vocoder_config=vocoder_config_path,
+        encoder_checkpoint="",
+        encoder_config="",
+        use_cuda=False,
+
+    )
+    # use_multi_speaker = hasattr(synthesizer.tts_model, "num_speakers") and synthesizer.tts_model.num_speakers > 1
+    # speaker_manager = getattr(synthesizer.tts_model, "speaker_manager", None)
+    # print(speaker_manager.speaker_ids)
+    # # TODO: set this from SpeakerManager
+    # use_gst = synthesizer.tts_config.get("use_gst", False)
+    # text = "A quick little demo to see if we can get TTS up and running."
+    speaker_idx = ""
+    style_wav = ""
+    wavs = synthesizer.tts(text_to_synthesize, speaker_name=speaker_idx, style_wav=style_wav)
+    # out = io.BytesIO()
+    synthesizer.save_wav(wavs, output_file)
+
 with console.status("[bold green]Loading nltk...", spinner=spinner_choice):
     nltk.download('wordnet', quiet=True)
     nltk.download('omw-1.4', quiet=True)
@@ -178,6 +222,8 @@ def generate_and_write_summary(movie_title, summary, keywords):
 
 def make_narration(text):
     with console.status("[bold green]Making narration...",spinner=spinner_choice):
+        coqui_tts(text, "narration.mp3")
+        return
         # Convert to speech
         speech_engine = pyttsx3.init()
         # Get list of all available voices and choose a random one
