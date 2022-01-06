@@ -19,7 +19,7 @@ soundtrack_files = [
     "talc_soundtrack2.mp3",
     "talc_soundtrack3.mp3",
     "talc_soundtrack4.mp3",
-    "talc_soundtrack5.mp3",
+    # "talc_soundtrack5.mp3",
 ]
 
 
@@ -38,12 +38,20 @@ def apply_motion(frames):
             video_motion_fx = [
                 lambda clip: zoom_out_effect(clip, zoom_ratio=zoom_ratio),
                 lambda clip: zoom_in_effect(clip, zoom_ratio=zoom_ratio),
+                lambda clip: oneminusglitch(clip),
             ]
             # frame = zoom_in_effect(frame, zoom_ratio=zoom_ratio)
             random_func = random.choice(video_motion_fx)
             frame = random_func(frame)
             return_frames.append(frame)
     return return_frames
+
+def oneminusglitch(clip):
+    def fl(gf, t):
+        frame = gf(t)
+        frame = 1 - frame;
+        return frame
+    return clip.fl(fl)
 
 def zoom_out_effect(clip, zoom_ratio=0.04):
     def effect(get_frame, t):
@@ -347,6 +355,7 @@ def get_random_clips(keywords, wiki_page_title):
                             lambda clip: clip.fx(vfx.supersample, d=int((param1+1) * 10), nframes=int((param2+1) * 30)),               
                             lambda clip: clip.fx(vfx.time_mirror),
                             lambda clip: clip.fx(vfx.time_symmetrize),
+                            lambda clip: clip.fx(oneminusglitch),
                         ]    
                         random_func = random.choice(video_fx_funcs)
                         random_youtube_subclip = random_func(random_youtube_subclip)
