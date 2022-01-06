@@ -91,6 +91,9 @@ def make_video(use_article=None, args=None):
     title, wiki_page_title, wiki_page_content = get_article(use_article)
     keywords, summary, summary_hash_text = summarize_article(wiki_page_content)
 
+    # summary = open_ai_jank_summary(summary)
+    # console.print(summary)
+
     if args.use_openai:
         opening, closing = open_ai_stuff(wiki_page_title)
         narration_text = wiki_page_title + "," + opening + ", " + summary + ", " + closing + ", ," + summary_hash_text
@@ -149,6 +152,27 @@ def cleanup():
     except Exception as e:
         console.print("[bold red]Warning[/bold red]: Cannot remove narration.mp3")
         console.print(str(e))
+
+
+def open_ai_jank_summary(summary):
+    openai.api_key = config("OPENAI_API_KEY")
+    total_summary = []
+    for sentence in track(summary.split("."), "[bold green]Generating openai banter...", refresh_per_second=1):
+        if random.random() < 0.5:
+            total_summary.append(sentence)
+            continue
+        if len(sentence) > 0:
+            try:
+                response = openai.Completion.create(engine="davinci", prompt=sentence, temperature=0.7, max_tokens=30,)
+                # if response.status_code == 200:
+                #     return response.result['choices'][0]['text']
+            except Exception as e:
+                console.print("[bold red]Warning[/bold red]: Cannot get open ai summary")
+                console.print(str(e))
+                return ""
+            total_summary.append(sentence)
+            total_summary.append(response.choices[0].text)
+    return ".".join(total_summary)
 
 def open_ai_stuff(topic):
     topic.strip()
@@ -252,7 +276,7 @@ def main():
         "--images_per_search",
         "-i",
         help="Number of images to search for per keyword",
-        default=4,
+        default=DEFAULT_IMAGES_PER_SEARCH,
         type=int,
     )
     parser.add_argument(
