@@ -13,7 +13,7 @@ from hashlib import sha1
 from datetime import datetime
 from main import console, spinner_choice
 from config import *
-import pyttsx3
+# import pyttsx3
 
 from pathlib import Path
 
@@ -25,11 +25,23 @@ def coqui_tts(text_to_synthesize, output_file):
     # ..\wikivids\venv\Lib\site-packages\TTS
     # TODO: Can we change the voice here I suppose? We get a list of available voices
     # and choose from them?
-    default_voice=r"tts_models/en/ljspeech/tacotron2-DDC"
+    voices = [
+    r"tts_models/en/ek1/tacotron2",
+    r"tts_models/en/ljspeech/tacotron2-DDC",
+    r"tts_models/en/ljspeech/tacotron2-DDC_ph",
+    r"tts_models/en/ljspeech/glow-tts",
+    r"tts_models/en/ljspeech/tacotron2-DCA",
+    # r"tts_models/en/ljspeech/speedy-speech-wn",
+    # r"tts_models/en/ljspeech/vits",
+    # r"tts_models/en/vctk/sc-glow-tts",
+    r"tts_models/en/vctk/vits",
+    ]
+    # tacotron2 + wavegrad = hangs?
+    voice=random.choice(voices)
     path = Path(__file__).parent / r"venv/Lib/site-packages/TTS/.models.json"
     print(path)
     manager = ModelManager(path)
-    model_path, config_path, model_item = manager.download_model(default_voice)
+    model_path, config_path, model_item = manager.download_model(voice)
     vocoder_name = model_item["default_vocoder"]
     vocoder_path, vocoder_config_path, _ = manager.download_model(vocoder_name)
     speakers_file_path = None
@@ -49,6 +61,7 @@ def coqui_tts(text_to_synthesize, output_file):
     )
     # use_multi_speaker = hasattr(synthesizer.tts_model, "num_speakers") and synthesizer.tts_model.num_speakers > 1
     # speaker_manager = getattr(synthesizer.tts_model, "speaker_manager", None)
+    # print(speaker_manager)
     # print(speaker_manager.speaker_ids)
     # # TODO: set this from SpeakerManager
     # use_gst = synthesizer.tts_config.get("use_gst", False)
@@ -224,15 +237,15 @@ def make_narration(text):
     with console.status("[bold green]Making narration...",spinner=spinner_choice):
         coqui_tts(text, "narration.mp3")
         return
-        # Convert to speech
-        speech_engine = pyttsx3.init()
-        # Get list of all available voices and choose a random one
-        voices = speech_engine.getProperty("voices")
-        speech_engine.setProperty("voice", random.choice(voices).id)
-        speech_engine.setProperty("rate", 175)
-        speech_engine.save_to_file(
-            text,
-            "narration.mp3",
-        )
-        speech_engine.runAndWait()
+#         # Convert to speech
+#         speech_engine = pyttsx3.init()
+#         # Get list of all available voices and choose a random one
+#         voices = speech_engine.getProperty("voices")
+#         speech_engine.setProperty("voice", random.choice(voices).id)
+#         speech_engine.setProperty("rate", 175)
+#         speech_engine.save_to_file(
+#             text,
+#             "narration.mp3",
+#         )
+#         speech_engine.runAndWait()
 
