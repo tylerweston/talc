@@ -13,7 +13,7 @@ from hashlib import sha1
 from datetime import datetime
 from main import console, spinner_choice
 from config import *
-# import pyttsx3
+import pyttsx3
 
 from pathlib import Path
 
@@ -23,8 +23,8 @@ from TTS.utils.synthesizer import Synthesizer
 
 def coqui_tts(text_to_synthesize, output_file):
     # ..\wikivids\venv\Lib\site-packages\TTS
-    # TODO: Can we change the voice here I suppose? We get a list of available voices
-    # and choose from them?
+    # TODO: The user\AppData\Local\tts folder is getting BIG! Should we maybe delete this folder when we're done with it?!
+    # But we don't want to redownload the models every time we run it either. Hmmm.
     voices = [
     r"tts_models/en/ek1/tacotron2",
     r"tts_models/en/ljspeech/tacotron2-DDC",
@@ -188,6 +188,8 @@ def summarize_article(wiki_page_content):
 
     # Remove not useful keywords
     keywords = [k for k in keywords if k.lower() not in remove_keywords_list]
+
+    # Generate some new keywords based on synonyms for existing keywords
     for _ in range(5):
         syn = get_synonyms(random.choice(keywords))
         if len(syn) == 0:
@@ -223,29 +225,34 @@ def get_synonyms(word):
 
 def generate_and_write_summary(movie_title, summary, keywords):
     summary_text = f"{movie_title}:\n{summary}\n\nkeywords: {', '.join(keywords)}\n\n"
-    # get todays date and format it
     today = datetime.now()
-    # today_formatted = today.strftime("%Y-%m-%d")
     summary_text += f"the aleatoric learning channel\n{today}\n"
     with open(
         f"finished/{movie_title}.txt", "w", encoding="utf-8"
     ) as summary_text_file:
         summary_text_file.write(summary_text)
 
+def pyttsx(text, file):
+        # Convert to speech
+        speech_engine = pyttsx3.init()
+        # Get list of all available voices and choose a random one
+        voices = speech_engine.getProperty("voices")
+        speech_engine.setProperty("voice", random.choice(voices).id)
+        speech_engine.setProperty("rate", 175)
+        speech_engine.save_to_file(
+            text,
+            file,
+        )
+        speech_engine.runAndWait()
+
 
 def make_narration(text):
     with console.status("[bold green]Making narration...",spinner=spinner_choice):
-        coqui_tts(text, "narration.mp3")
-        return
-#         # Convert to speech
-#         speech_engine = pyttsx3.init()
-#         # Get list of all available voices and choose a random one
-#         voices = speech_engine.getProperty("voices")
-#         speech_engine.setProperty("voice", random.choice(voices).id)
-#         speech_engine.setProperty("rate", 175)
-#         speech_engine.save_to_file(
-#             text,
-#             "narration.mp3",
-#         )
-#         speech_engine.runAndWait()
+        if (random.randint(0,1) == 0):
+            coqui_tts(text, "narration.mp3")
+        else:
+            pyttsx(text, "narration.mp3")
+    # TODO: Add any audio effects to narration.mp3 here!
+    return
+
 
