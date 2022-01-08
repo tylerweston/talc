@@ -15,6 +15,63 @@ from main import console, spinner_choice
 from config import *
 import pyttsx3
 
+from pathlib import Path
+
+from TTS.config import load_config
+from TTS.utils.manage import ModelManager
+from TTS.utils.synthesizer import Synthesizer
+
+def coqui_tts(text_to_synthesize, output_file):
+    # ..\wikivids\venv\Lib\site-packages\TTS
+    # TODO: The user\AppData\Local\tts folder is getting BIG! Should we maybe delete this folder when we're done with it?!
+    # But we don't want to redownload the models every time we run it either. Hmmm.
+    voices = [
+    r"tts_models/en/ek1/tacotron2",
+    r"tts_models/en/ljspeech/tacotron2-DDC",
+    r"tts_models/en/ljspeech/tacotron2-DDC_ph",
+    r"tts_models/en/ljspeech/glow-tts",
+    r"tts_models/en/ljspeech/tacotron2-DCA",
+    # r"tts_models/en/ljspeech/speedy-speech-wn",
+    # r"tts_models/en/ljspeech/vits",
+    # r"tts_models/en/vctk/sc-glow-tts",
+    r"tts_models/en/vctk/vits",
+    ]
+    # tacotron2 + wavegrad = hangs?
+    voice=random.choice(voices)
+    path = Path(__file__).parent / r"venv/Lib/site-packages/TTS/.models.json"
+    print(path)
+    manager = ModelManager(path)
+    model_path, config_path, model_item = manager.download_model(voice)
+    vocoder_name = model_item["default_vocoder"]
+    vocoder_path, vocoder_config_path, _ = manager.download_model(vocoder_name)
+    speakers_file_path = None
+
+    #  load models
+    synthesizer = Synthesizer(
+        tts_checkpoint=model_path,
+        tts_config_path=config_path,
+        tts_speakers_file=speakers_file_path,
+        tts_languages_file=None,
+        vocoder_checkpoint=vocoder_path,
+        vocoder_config=vocoder_config_path,
+        encoder_checkpoint="",
+        encoder_config="",
+        use_cuda=False,
+
+    )
+    # use_multi_speaker = hasattr(synthesizer.tts_model, "num_speakers") and synthesizer.tts_model.num_speakers > 1
+    # speaker_manager = getattr(synthesizer.tts_model, "speaker_manager", None)
+    # print(speaker_manager)
+    # print(speaker_manager.speaker_ids)
+    # # TODO: set this from SpeakerManager
+    # use_gst = synthesizer.tts_config.get("use_gst", False)
+    # text = "A quick little demo to see if we can get TTS up and running."
+    speaker_idx = ""
+    style_wav = ""
+    wavs = synthesizer.tts(text_to_synthesize, speaker_name=speaker_idx, style_wav=style_wav)
+    # out = io.BytesIO()
+    synthesizer.save_wav(wavs, output_file)
+
 with console.status("[bold green]Loading nltk...", spinner=spinner_choice):
     nltk.download('wordnet', quiet=True)
     nltk.download('omw-1.4', quiet=True)
@@ -131,6 +188,8 @@ def summarize_article(wiki_page_content):
 
     # Remove not useful keywords
     keywords = [k for k in keywords if k.lower() not in remove_keywords_list]
+
+    # Generate some new keywords based on synonyms for existing keywords
     for _ in range(5):
         syn = get_synonyms(random.choice(keywords))
         if len(syn) == 0:
@@ -166,18 +225,14 @@ def get_synonyms(word):
 
 def generate_and_write_summary(movie_title, summary, keywords):
     summary_text = f"{movie_title}:\n{summary}\n\nkeywords: {', '.join(keywords)}\n\n"
-    # get todays date and format it
     today = datetime.now()
-    # today_formatted = today.strftime("%Y-%m-%d")
     summary_text += f"the aleatoric learning channel\n{today}\n"
     with open(
         f"finished/{movie_title}.txt", "w", encoding="utf-8"
     ) as summary_text_file:
         summary_text_file.write(summary_text)
 
-
-def make_narration(text):
-    with console.status("[bold green]Making narration...",spinner=spinner_choice):
+def pyttsx(text, file):
         # Convert to speech
         speech_engine = pyttsx3.init()
         # Get list of all available voices and choose a random one
@@ -186,7 +241,18 @@ def make_narration(text):
         speech_engine.setProperty("rate", 175)
         speech_engine.save_to_file(
             text,
-            "narration.mp3",
+            file,
         )
         speech_engine.runAndWait()
+
+
+def make_narration(text):
+    with console.status("[bold green]Making narration...",spinner=spinner_choice):
+        if (random.randint(0,1) == 0):
+            coqui_tts(text, "narration.mp3")
+        else:
+            pyttsx(text, "narration.mp3")
+    # TODO: Add any audio effects to narration.mp3 here!
+    return
+
 

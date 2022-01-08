@@ -13,3 +13,4 @@ mask_rcnn_coco.h5
 .vscode/
 *.mp4
 test_*.py
+*.wav
