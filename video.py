@@ -323,7 +323,7 @@ def get_random_clips(keywords, wiki_page_title):
                 # Grab a few snippets from the video
                 for _ in range(0, 2):
 
-                    start_time = random.randint(0, min(1, youtube.length - 10))
+                    start_time = random.randint(0, max(1, youtube.length - 10))
                     end_time = min(youtube.length, start_time + random.randint(1, 3))
                     random_youtube_subclip = original_clip.subclip(start_time, end_time)
                     random_youtube_subclip = random_youtube_subclip.set_fps(24)
