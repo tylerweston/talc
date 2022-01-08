@@ -15,6 +15,7 @@
 #   - Do some video glitching / overlay sort of stuff? Look into pixellib
 #       - Semantic segmentation to remove video foreground and overlay over
 #         some other clip we have?
+#  - Any python file named test_*.py will be excluded from the repo
 
 import os
 import sys
@@ -24,8 +25,13 @@ console = Console()
 import random
 from config import *
 
+# TODO: Get this outta here!
 spinner_choice = random.choice(['aesthetic', 'arc', 'arrow3', 'betaWave', 'balloon',
 'bounce', 'bouncingBar', 'circle', 'dots', 'line', 'squish', 'toggle10', 'pong'])
+
+__prog__ = "TALC"
+__author__ = "Tyler Weston"
+__version__ = '0.0.5'
 
 # This is all we need if we want to just get --help or --version so check for those first
 args = [s.lower() for s in sys.argv[1:]]
@@ -39,10 +45,6 @@ if not ("--help" in args or "-h" in args or "--version" in args or "-v" in args)
     import openai
     from moviepy.editor import *
     from decouple import UndefinedValueError, config
-
-__prog__ = "TALC"
-__author__ = "Tyler Weston"
-__version__ = '0.0.5'
 
 if USE_OPENAI:
     try:

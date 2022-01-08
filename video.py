@@ -14,10 +14,11 @@ from images import apply_image_fx
 import re
 import os
 
+# TODO: Replace these removed soundtracks
 soundtrack_files = [
     "talc_soundtrack.mp3",
     "talc_soundtrack2.mp3",
-    "talc_soundtrack3.mp3",
+    # "talc_soundtrack3.mp3",
     "talc_soundtrack4.mp3",
     # "talc_soundtrack5.mp3",
 ]
