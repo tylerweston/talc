@@ -16,22 +16,18 @@
 #       - Semantic segmentation to remove video foreground and overlay over
 #         some other clip we have?
 #  - Any python file named test_*.py will be excluded from the repo
+#  - possible fun modules to play with:
+#       - wave - read and write wav files
+#       - tempfile - create temporary files (instead of managing manually)
 
+from config import *
 import os
 import sys
 import argparse
 from rich.console import Console
-console = Console()
+console = Console(color_system="256")
 import random
-from config import *
 
-# TODO: Get this outta here!
-spinner_choice = random.choice(['aesthetic', 'arc', 'arrow3', 'betaWave', 'balloon',
-'bounce', 'bouncingBar', 'circle', 'dots', 'line', 'squish', 'toggle10', 'pong'])
-
-__prog__ = "TALC"
-__author__ = "Tyler Weston"
-__version__ = '0.0.5'
 
 # This is all we need if we want to just get --help or --version so check for those first
 args = [s.lower() for s in sys.argv[1:]]
@@ -40,6 +36,7 @@ if not ("--help" in args or "-h" in args or "--version" in args or "-v" in args)
     from summarize import *
     from images import *
     from video import *
+    
 
     import shutil
     import openai
@@ -293,7 +290,7 @@ def main():
         "-v",
         help="Print version",
         action='version',
-        version=f'{__prog__} - {__author__} - {__version__}',    
+        version=f'{prog} - {author} - {version}',    
     )
     parser.add_argument(
         "--no_semantic_glitches",
@@ -316,11 +313,31 @@ def main():
     # today = datetime.now()
     # today_formatted = today.strftime("%Y-%m-%d")
     # console.print(f"{today_formatted}")
+    display_banner()
     for i, _ in enumerate(range(args.num_vids)):
         display_str = "Making video..." if args.num_vids == 1 else \
             f"Making video [bold green]{i+1}[/bold green]/[bold green]{args.num_vids}[/bold green]..."
         console.print(display_str)
         make_video(use_article=args.article, args=args)
+
+def display_banner():
+    console.print("████████╗ █████╗ ██╗      ██████╗    ██╗   ██╗██╗██████╗ ███████╗ ██████╗    ")
+    console.print("╚══██╔══╝██╔══██╗██║     ██╔════╝    ██║   ██║██║██╔══██╗██╔════╝██╔═══██╗   ")
+    console.print("   ██║   ███████║██║     ██║         ██║   ██║██║██║  ██║█████╗  ██║   ██║   ")
+    console.print("   ██║   ██╔══██║██║     ██║         ╚██╗ ██╔╝██║██║  ██║██╔══╝  ██║   ██║   ")
+    console.print("   ██║   ██║  ██║███████╗╚██████╗     ╚████╔╝ ██║██████╔╝███████╗╚██████╔╝   ")
+    console.print("   ╚═╝   ╚═╝  ╚═╝╚══════╝ ╚═════╝      ╚═══╝  ╚═╝╚═════╝ ╚══════╝ ╚═════╝    ")
+    console.print("                                                                             ")
+    console.print(" ██████╗ ███████╗███╗   ██╗███████╗██████╗  █████╗ ████████╗ ██████╗ ██████╗ ")
+    console.print("██╔════╝ ██╔════╝████╗  ██║██╔════╝██╔══██╗██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗")
+    console.print("██║  ███╗█████╗  ██╔██╗ ██║█████╗  ██████╔╝███████║   ██║   ██║   ██║██████╔╝")
+    console.print("██║   ██║██╔══╝  ██║╚██╗██║██╔══╝  ██╔══██╗██╔══██║   ██║   ██║   ██║██╔══██╗")
+    console.print("╚██████╔╝███████╗██║ ╚████║███████╗██║  ██║██║  ██║   ██║   ╚██████╔╝██║  ██║")
+    console.print(" ╚═════╝ ╚══════╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝")
+    console.print("                                                                             ")                                          
+    console.print(" Tyler Weston 2021/2022")
+    console.rule()
+
 
 if __name__ == "__main__":
     main()
