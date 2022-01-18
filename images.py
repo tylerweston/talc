@@ -71,7 +71,11 @@ def detect_and_make_masked_images(images_list):
         second_image = random.choice(images_list)
         second_image = cv2.imread(second_image)
         # resize second_image to match mask_image
-        second_image = cv2.resize(second_image, (mask_image.size[0], mask_image.size[1]))
+        try:
+            second_image = cv2.resize(second_image, (mask_image.size[0], mask_image.size[1]))
+        except cv2.error:
+            # Problem with resizing one of the images, try the next one!
+            continue
         # masked_image = cv2.bitwise_and(second_image, image, mask=thresh) if random.random() < 0.5 else cv2.bitwise_and(image, second_image, mask=thresh)
         mask_funcs = [
             lambda arg1, arg2, mask: cv2.bitwise_and(arg1, arg2, mask),
@@ -79,6 +83,8 @@ def detect_and_make_masked_images(images_list):
             lambda arg1, arg2, mask: cv2.bitwise_or(arg1, arg2, mask),
             lambda arg1, arg2, mask: cv2.bitwise_or(arg2, arg1, mask),
             lambda arg1, arg2, mask: cv2.bitwise_xor(arg1, arg2, mask),
+            lambda arg1, _, mask: cv2.bitwise_not(arg1, mask),
+            lambda _, arg2, mask: cv2.bitwise_not(arg2, mask),
             lambda arg1, arg2, mask:
                 cv2.bitwise_and(arg1, arg2, mask=cv2.bitwise_not(mask)) + 
                 cv2.bitwise_and(arg1, arg2, mask=mask)
