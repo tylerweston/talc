@@ -313,6 +313,7 @@ def main():
     # today = datetime.now()
     # today_formatted = today.strftime("%Y-%m-%d")
     # console.print(f"{today_formatted}")
+    # print(console.color_system)
     display_banner()
     for i, _ in enumerate(range(args.num_vids)):
         display_str = "Making video..." if args.num_vids == 1 else \
@@ -335,7 +336,9 @@ def display_banner():
     console.print("╚██████╔╝███████╗██║ ╚████║███████╗██║  ██║██║  ██║   ██║   ╚██████╔╝██║  ██║")
     console.print(" ╚═════╝ ╚══════╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝")
     console.print("                                                                             ")                                          
-    console.print(" Tyler Weston 2021/2022")
+    today = datetime.now()
+    today_formatted = today.strftime("%Y-%m-%d")
+    console.print(f" Tyler Weston 2021/2022, today: {today_formatted}")
     console.rule()
 
 
