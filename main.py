@@ -100,6 +100,10 @@ def make_video(use_article=None, args=None):
         narration_text = wiki_page_title + ", " + summary + ", " + summary_hash_text
 
     make_narration(narration_text)
+    soundfile_name = 'narration.wav'
+    if not args.no_soundfx:
+        add_audio_effects('narration.wav', 'narration_effected.wav')
+        soundfile_name = 'narration_effected.wav'
 
     # Images
     images_list = get_images(keywords, wiki_page_title, passed_args=args)
@@ -122,7 +126,7 @@ def make_video(use_article=None, args=None):
     # Video clips
     random_video_clips = get_random_clips(keywords, wiki_page_title)
 
-    movie_title = comp_video(images_list, random_video_clips, title, summary)
+    movie_title = comp_video(images_list, random_video_clips, title, soundfile_name)
     generate_and_write_summary(movie_title, summary, keywords)
     console.print(f"Finished writing [bold green]{movie_title}[/bold green]")
 
@@ -147,7 +151,9 @@ def cleanup():
         console.print(str(e))
 
     try:
-        os.remove("narration.mp3")
+        # os.remove("narration.mp3")
+        os.remove("narration.wav")
+        os.remove("narration_effected.wav")
     except Exception as e:
         console.print("[bold red]Warning[/bold red]: Cannot remove narration.mp3")
         console.print(str(e))
@@ -230,6 +236,13 @@ def open_ai_stuff(topic):
 def main():
     parser = argparse.ArgumentParser(description="TALC video generator")
     parser.add_argument(
+        "--no_soundfx",
+        "-x",
+        help="Don't apply any sound fx to the narration",
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
         "--article",
         "-a",
         help="The article to use",
@@ -294,7 +307,7 @@ def main():
     )
     parser.add_argument(
         "--no_semantic_glitches",
-        "-x",
+        "-l",
         help="Don't glitch semantic",
         default=False,
         action="store_true",

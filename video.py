@@ -107,7 +107,7 @@ def zoom_in_effect(clip, zoom_ratio=0.04):
         return result
     return clip.fl(effect)
 
-def comp_video(images_list, random_video_clips, title, summary):
+def comp_video(images_list, random_video_clips, title, soundfile_name):
     # Create video
     with console.status("[bold green]Creating video...", spinner=spinner_choice):
         title_card_clip = ImageClip("title_card.png", duration=2)
@@ -149,7 +149,7 @@ def comp_video(images_list, random_video_clips, title, summary):
         visual_clip = concatenate_videoclips(frames, method="compose")
 
         # Add some silence to end of narration
-        narration_clip = AudioFileClip("narration.mp3")
+        narration_clip = AudioFileClip(soundfile_name)
 
         def silence_function(x):
             return 0

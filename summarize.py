@@ -20,6 +20,85 @@ from pathlib import Path
 from TTS.config import load_config
 from TTS.utils.manage import ModelManager
 from TTS.utils.synthesizer import Synthesizer
+import numpy as np
+
+import soundfile as sf
+from pedalboard import (
+    Pedalboard,
+
+    Compressor,
+    Chorus,
+    Gain,
+    Reverb,
+    Limiter,
+    LadderFilter,
+    Phaser,
+    Distortion,
+    NoiseGate,
+)
+
+def add_audio_effects(in_file, out_file):
+    console.print("Adding audio effects...", end='')
+    # use pedalboard to add some random audio effects to in_file and write to out_file
+    audio, sample_rate = sf.read(in_file)
+    # Make a Pedalboard object, containing multiple plugins:
+    board1 = Pedalboard([
+        Compressor(threshold_db=-50, ratio=25),
+        Gain(gain_db=30),
+        Chorus(),
+        LadderFilter(mode=LadderFilter.Mode.HPF12, cutoff_hz=900),
+        Phaser(),
+        Reverb(room_size=0.25),
+        Compressor(threshold_db=-25, ratio=10),
+        Gain(gain_db=10),
+        Limiter(),
+        Gain(gain_db=-20),
+    ], sample_rate=sample_rate)
+    board2 = Pedalboard([
+        Compressor(threshold_db=-50, ratio=25),
+        Reverb(room_size=0.25),
+        Gain(gain_db=30),
+        Distortion(),
+        NoiseGate(),
+        Phaser(),
+        Limiter(),
+        Gain(gain_db=-20),
+    ], sample_rate=sample_rate)
+    board3 = Pedalboard([
+        Reverb(room_size=0.15),
+        # Distortion(),
+        LadderFilter(mode=LadderFilter.Mode.LPF12, cutoff_hz=1800),
+        Compressor(threshold_db=-50, ratio=25),
+        Gain(gain_db=30),
+        Distortion(),
+        NoiseGate(),
+        Limiter(),
+        Gain(gain_db=-20),
+    ], sample_rate=sample_rate)
+    boards = [board1, board2, board3]
+    # # Run the audio through this pedalboard!
+    # effected = board(audio)
+    effected = np.zeros_like(audio)
+    # step_size = 200
+    i = 0
+    #for i in range(0, audio.shape[0], step_size):
+    while i < audio.shape[0]:
+        step_size = random.randint(1000, 2000)
+        if i + step_size > audio.shape[0]:
+            step_size = audio.shape[0] - i
+        if random.random() < 0.9:
+            effected[i:i+step_size] = audio[i:i+step_size]
+            i += step_size
+            continue
+        cur_board = random.choice(boards)
+        chunk = cur_board.process(audio[i:i+step_size], reset=False)
+        effected[i:i+step_size] = chunk
+        i += step_size
+
+    with sf.SoundFile(out_file, 'w', samplerate=sample_rate, channels=len(effected.shape)) as f:
+        f.write(effected)
+    console.print("Done!")
+
 
 def coqui_tts(text_to_synthesize, output_file):
     # ..\wikivids\venv\Lib\site-packages\TTS
@@ -34,12 +113,12 @@ def coqui_tts(text_to_synthesize, output_file):
     # r"tts_models/en/ljspeech/speedy-speech-wn",
     # r"tts_models/en/ljspeech/vits",
     # r"tts_models/en/vctk/sc-glow-tts",
-    r"tts_models/en/vctk/vits",
+    # r"tts_models/en/vctk/vits",
     ]
     # tacotron2 + wavegrad = hangs?
     voice=random.choice(voices)
     path = Path(__file__).parent / r"venv/Lib/site-packages/TTS/.models.json"
-    print(path)
+    # print(path)
     manager = ModelManager(path)
     model_path, config_path, model_item = manager.download_model(voice)
     vocoder_name = model_item["default_vocoder"]
@@ -249,9 +328,9 @@ def pyttsx(text, file):
 def make_narration(text):
     with console.status("[bold green]Making narration...",spinner=spinner_choice):
         if (random.randint(0,1) == 0):
-            coqui_tts(text, "narration.mp3")
+            coqui_tts(text, "narration.wav")
         else:
-            pyttsx(text, "narration.mp3")
+            pyttsx(text, "narration.wav")
     # TODO: Add any audio effects to narration.mp3 here!
     return
 
