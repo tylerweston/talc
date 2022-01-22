@@ -76,6 +76,11 @@ def detect_and_make_masked_images(images_list):
         except cv2.error:
             # Problem with resizing one of the images, try the next one!
             continue
+            
+        if image is None or second_image is None:
+            # Error grabbing images!
+            console.print("[red]Warning[/red]: Either image or second_image was None")
+            continue
         # masked_image = cv2.bitwise_and(second_image, image, mask=thresh) if random.random() < 0.5 else cv2.bitwise_and(image, second_image, mask=thresh)
         mask_funcs = [
             lambda arg1, arg2, mask: cv2.bitwise_and(arg1, arg2, mask),

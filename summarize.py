@@ -14,6 +14,7 @@ from datetime import datetime
 from main import console, spinner_choice
 from config import *
 import pyttsx3
+from utils import fix_abbreviations
 
 from pathlib import Path
 
@@ -36,6 +37,13 @@ from pedalboard import (
     Distortion,
     NoiseGate,
 )
+
+# Load nltk libraries when summarize is imported
+with console.status("[bold green]Loading nltk...", spinner=spinner_choice):
+    nltk.download('wordnet', quiet=True)
+    nltk.download('omw-1.4', quiet=True)
+
+
 
 def add_audio_effects(in_file, out_file):
     console.print("Adding audio effects...", end='')
@@ -75,7 +83,17 @@ def add_audio_effects(in_file, out_file):
         Limiter(),
         Gain(gain_db=-20),
     ], sample_rate=sample_rate)
-    boards = [board1, board2, board3]
+    board4 = Pedalboard([
+        Compressor(threshold_db=-50, ratio=25),
+        Gain(gain_db=30),
+        LadderFilter(mode=LadderFilter.Mode.LPF12, cutoff_hz=2000),
+        Phaser(),
+        Gain(gain_db=10),
+        Limiter(),
+        Distortion(),
+        Gain(gain_db=-20),
+    ], sample_rate=sample_rate)
+    boards = [board1, board2, board3, board4]
     # # Run the audio through this pedalboard!
     # effected = board(audio)
     effected = np.zeros_like(audio)
@@ -83,10 +101,10 @@ def add_audio_effects(in_file, out_file):
     i = 0
     #for i in range(0, audio.shape[0], step_size):
     while i < audio.shape[0]:
-        step_size = random.randint(1000, 2000)
+        step_size = random.randint(800, 2500)
         if i + step_size > audio.shape[0]:
             step_size = audio.shape[0] - i
-        if random.random() < 0.9:
+        if random.random() < 0.92:
             effected[i:i+step_size] = audio[i:i+step_size]
             i += step_size
             continue
@@ -151,9 +169,6 @@ def coqui_tts(text_to_synthesize, output_file):
     # out = io.BytesIO()
     synthesizer.save_wav(wavs, output_file)
 
-with console.status("[bold green]Loading nltk...", spinner=spinner_choice):
-    nltk.download('wordnet', quiet=True)
-    nltk.download('omw-1.4', quiet=True)
 
 def get_article(use_article=None):
     # print("Finding random Wikipedia article", end="")
@@ -209,6 +224,8 @@ def get_article(use_article=None):
     # Remove headers
     wiki_page_content = re.sub("===.*===", "", wiki_page_content)
     wiki_page_content = re.sub("==.*==", "", wiki_page_content)
+
+    wiki_page_content = fix_abbreviations(wiki_page_content)
 
     return title, wiki_page_title, wiki_page_content
 

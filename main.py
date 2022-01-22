@@ -1,10 +1,8 @@
 # TODO:
 #   - More sound options? Add some random sounds
+#   - Move audio stuff out of summarize
 #   - Better article selection somehow?
-#   - Voice glitches
 #   - Different soundtracks to choose from
-#   - Get different voices?
-#   - Refactor code out of one giant script
 #   - Organize files
 #   - More soundtracks
 #   - Strip out invalid filename characters such as :, ?, *, and others
@@ -27,6 +25,7 @@ import argparse
 from rich.console import Console
 console = Console(color_system="256")
 import random
+from version import __version__
 
 
 # This is all we need if we want to just get --help or --version so check for those first
@@ -51,38 +50,6 @@ if USE_OPENAI:
         console.print(e)
         exit(0)
 
-def audio_noiseglitch(clip):
-    def glitching(gf, t):
-        global noise_glitching
-        gft = gf(t)
-
-        if noise_glitching:
-            if random.random() < 0.2:
-                noise_glitching = False
-
-        if not noise_glitching:
-            if random.random() < 0.1:
-                noise_glitching = True
-
-        if noise_glitching:
-            return random.random() * 2 - 1
-        else:
-            return gft
-
-    return clip.fl(glitching, keep_duration=True)
-
-# def audio_fuzz(clip):
-#
-#     def fuzzing(gf, t):
-#         gft = gf(t)
-#         if random.random() < 0.5:
-#             if gft < -0.7:
-#                 gft = -1
-#             if gft > 0.7:
-#                 gft = 1
-#         return gft
-#
-#     return clip.fl(fuzzing, keep_duration=True)
 def make_video(use_article=None, args=None):
     # TALC video generator
 
@@ -90,6 +57,9 @@ def make_video(use_article=None, args=None):
     title, wiki_page_title, wiki_page_content = get_article(use_article)
     keywords, summary, summary_hash_text = summarize_article(wiki_page_content)
 
+    # Video clips
+    random_video_clips = get_random_clips(keywords, wiki_page_title)
+    
     # summary = open_ai_jank_summary(summary)
     # console.print(summary)
 
@@ -123,8 +93,7 @@ def make_video(use_article=None, args=None):
 
     resize_images(images_list)
 
-    # Video clips
-    random_video_clips = get_random_clips(keywords, wiki_page_title)
+
 
     movie_title = comp_video(images_list, random_video_clips, title, soundfile_name)
     generate_and_write_summary(movie_title, summary, keywords)
@@ -303,7 +272,7 @@ def main():
         "-v",
         help="Print version",
         action='version',
-        version=f'{prog} - {author} - {version}',    
+        version=f'{prog} - {author} - {__version__}',    
     )
     parser.add_argument(
         "--no_semantic_glitches",
@@ -351,7 +320,7 @@ def display_banner():
     console.print("                                                                             ")                                          
     today = datetime.now()
     today_formatted = today.strftime("%Y-%m-%d")
-    console.print(f" Tyler Weston 2021/2022, today: {today_formatted}")
+    console.print(f" Tyler Weston 2021/2022, today: {today_formatted}, version# {__version__}")
     console.rule()
 
 

@@ -14,7 +14,7 @@ soundtrack_files = [
 
 prog = "TALC"
 author = "Tyler Weston"
-version = '0.0.5'
+# version = '0.0.5'
 
 size = 1280, 720
 
