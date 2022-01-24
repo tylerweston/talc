@@ -44,7 +44,6 @@ with console.status("[bold green]Loading nltk...", spinner=spinner_choice):
     nltk.download('omw-1.4', quiet=True)
 
 
-
 def add_audio_effects(in_file, out_file):
     console.print("Adding audio effects...", end='')
     # use pedalboard to add some random audio effects to in_file and write to out_file
@@ -93,18 +92,21 @@ def add_audio_effects(in_file, out_file):
         Distortion(),
         Gain(gain_db=-20),
     ], sample_rate=sample_rate)
-    boards = [board1, board2, board3, board4]
-    # # Run the audio through this pedalboard!
-    # effected = board(audio)
+    board5 = Pedalboard([
+        Compressor(threshold_db=-50, ratio=25),
+        Reverb(room_size=0.35),
+        Distortion(),
+        Limiter(),
+        Gain(gain_db=-20),
+    ], sample_rate=sample_rate)
+    boards = [board1, board2, board3, board4, board5]
     effected = np.zeros_like(audio)
-    # step_size = 200
     i = 0
-    #for i in range(0, audio.shape[0], step_size):
     while i < audio.shape[0]:
         step_size = random.randint(800, 2500)
         if i + step_size > audio.shape[0]:
             step_size = audio.shape[0] - i
-        if random.random() < 0.92:
+        if random.random() < 0.95:
             effected[i:i+step_size] = audio[i:i+step_size]
             i += step_size
             continue
@@ -112,6 +114,8 @@ def add_audio_effects(in_file, out_file):
         chunk = cur_board.process(audio[i:i+step_size], reset=False)
         effected[i:i+step_size] = chunk
         i += step_size
+    
+
 
     with sf.SoundFile(out_file, 'w', samplerate=sample_rate, channels=len(effected.shape)) as f:
         f.write(effected)
@@ -123,7 +127,7 @@ def coqui_tts(text_to_synthesize, output_file):
     # TODO: The user\AppData\Local\tts folder is getting BIG! Should we maybe delete this folder when we're done with it?!
     # But we don't want to redownload the models every time we run it either. Hmmm.
     voices = [
-    r"tts_models/en/ek1/tacotron2",
+    # r"tts_models/en/ek1/tacotron2",
     r"tts_models/en/ljspeech/tacotron2-DDC",
     r"tts_models/en/ljspeech/tacotron2-DDC_ph",
     r"tts_models/en/ljspeech/glow-tts",
@@ -166,7 +170,6 @@ def coqui_tts(text_to_synthesize, output_file):
     speaker_idx = ""
     style_wav = ""
     wavs = synthesizer.tts(text_to_synthesize, speaker_name=speaker_idx, style_wav=style_wav)
-    # out = io.BytesIO()
     synthesizer.save_wav(wavs, output_file)
 
 
@@ -344,11 +347,12 @@ def pyttsx(text, file):
 
 def make_narration(text):
     with console.status("[bold green]Making narration...",spinner=spinner_choice):
-        if (random.randint(0,1) == 0):
-            coqui_tts(text, "narration.wav")
-        else:
-            pyttsx(text, "narration.wav")
-    # TODO: Add any audio effects to narration.mp3 here!
+        # Always use coqui?
+        coqui_tts(text, "narration.wav")
+        # if (random.randint(0,1) == 0):
+        #     coqui_tts(text, "narration.wav")
+        # else:
+        #     pyttsx(text, "narration.wav")
     return
 
 

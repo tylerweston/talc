@@ -151,13 +151,6 @@ def detect_and_glitch_semantic(images_list):
             # console.print(e)
             continue
 
-
-    # # delete test_seg.jpg
-    # try:
-    #     os.remove("test_seg.jpg")
-    # except:
-    #     pass
-
 def detect_and_sort_faces(images_list):
     detect_str = f"[bold green]Detecting faces ({len(images_list)})..."
     # with console.status(detect_str, spinner=spinner_choice):
@@ -309,12 +302,12 @@ def apply_image_fx(frames):
             # choose a random effect from all available moviepy vfx
             param1 = random.random()
             param2 = random.random()
-            # choose random x and y values that are within the size of the clip
-            x = random.randint(0, size[0] - 1)
-            y = random.randint(0, size[1] - 1)
-            # choose another set of random x and y values that are within the size of the clip
-            x2 = random.randint(0, size[0] - 1)
-            y2 = random.randint(0, size[1] - 1)
+            # # choose random x and y values that are within the size of the clip
+            # x = random.randint(0, size[0] - 1)
+            # y = random.randint(0, size[1] - 1)
+            # # choose another set of random x and y values that are within the size of the clip
+            # x2 = random.randint(0, size[0] - 1)
+            # y2 = random.randint(0, size[1] - 1)
             video_fx_funcs = [
                 lambda clip: clip.fx(vfx.accel_decel, new_duration=None, abruptness=param1, soonness=param2),
                 lambda clip: clip.fx(vfx.blackwhite),

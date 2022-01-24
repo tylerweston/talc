@@ -31,8 +31,9 @@ def apply_motion(frames):
                 lambda clip: zoom_out_effect(clip, zoom_ratio=zoom_ratio),
                 lambda clip: zoom_in_effect(clip, zoom_ratio=zoom_ratio),
                 lambda clip: oneminusglitch(clip),
+                lambda clip: pixellate_in_effect(clip),
+                lambda clip: pixellate_out_effect(clip),
             ]
-            # frame = zoom_in_effect(frame, zoom_ratio=zoom_ratio)
             random_func = random.choice(video_motion_fx)
             frame = random_func(frame)
             return_frames.append(frame)
@@ -106,6 +107,30 @@ def zoom_in_effect(clip, zoom_ratio=0.04):
 
         return result
     return clip.fl(effect)
+
+def pixellate_in_effect(clip):
+    # From: https://stackoverflow.com/questions/47143332/how-to-pixelate-a-square-image-to-256-big-pixels-with-python
+    # Thanks Mark Setchell
+    def fl(gf, t):
+        frame = gf(t)
+        target = int(16 * ((t + 1) * 8))
+        img = Image.fromarray(frame)
+        img_small = img.resize((target,target),resample=Image.BILINEAR)
+        res = img_small.resize(img.size, Image.NEAREST)
+        return np.array(res)
+    return clip.fl(fl)
+
+def pixellate_out_effect(clip):
+    # From: https://stackoverflow.com/questions/47143332/how-to-pixelate-a-square-image-to-256-big-pixels-with-python
+    # Thanks Mark Setchell
+    def fl(gf, t):
+        frame = gf(t)
+        target = 32 + int(16 + (t * 32))
+        img = Image.fromarray(frame)
+        img_small = img.resize((target,target),resample=Image.BILINEAR)
+        res = img_small.resize(img.size, Image.NEAREST)
+        return np.array(res)
+    return clip.fl(fl)
 
 def comp_video(images_list, random_video_clips, title, soundfile_name):
     # Create video
@@ -358,8 +383,3 @@ def get_random_clips(keywords, wiki_page_title):
 
     console.print(f"Got [bold green]{len(random_video_clips)}[/bold green] videos")
     return random_video_clips
-
-def apply_moviefx(clip):
-    pass
-
-

@@ -1,4 +1,6 @@
+# keys
 .env
+# local folders
 /__pycache__/
 /.idea/
 /finished/
@@ -6,7 +8,9 @@
 /downloads/
 /videos/
 /soundtracks/
-narration.mp3
+# In case narration doesn't get cleaned up
+narration.wav
+narration_effected.wav
 temp-audio.m4a
 deeplabv3_xception_tf_dim_ordering_tf_kernels.h5
 mask_rcnn_coco.h5
@@ -14,3 +18,5 @@ mask_rcnn_coco.h5
 *.mp4
 test_*.py
 *.wav
+# Our Rocky test image, don't need that in there, and some testing scripts
+rocky.jpg   

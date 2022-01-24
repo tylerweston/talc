@@ -16,10 +16,13 @@ def fix_abbreviations(text):
     """replace some common abbreviations to make the computer pronunciation a bit better"""
     # No. -> number
     # RAF -> R.A.F.
+    # TODO: We should assume that ANY word of the format UPPERCASE 3+ letters is an abbreviation and insert . between
+    # letters to allow our robot friend to pronounce it more easily
     replacements = {
         r'\bNo\.': "number",
         r'\bRAF\b': "R.A.F",
         r'\bEU\b': "E.U.",
+        r'\bII\b': "two",
     }
     for word, replacement in replacements.items():
         text = re.sub(word, replacement, text)

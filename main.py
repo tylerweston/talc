@@ -57,6 +57,9 @@ def make_video(use_article=None, args=None):
     title, wiki_page_title, wiki_page_content = get_article(use_article)
     keywords, summary, summary_hash_text = summarize_article(wiki_page_content)
 
+    # Images
+    images_list = get_images(keywords, wiki_page_title, passed_args=args)
+
     # Video clips
     random_video_clips = get_random_clips(keywords, wiki_page_title)
     
@@ -74,9 +77,6 @@ def make_video(use_article=None, args=None):
     if not args.no_soundfx:
         add_audio_effects('narration.wav', 'narration_effected.wav')
         soundfile_name = 'narration_effected.wav'
-
-    # Images
-    images_list = get_images(keywords, wiki_page_title, passed_args=args)
 
     # Detect faces first since they won't be detectede if they are all glitched out first
     if not args.no_detect_faces:
