@@ -1,4 +1,4 @@
-# The Aleatoric Learning Channel
+# [The Aleatoric Learning Channel](https://www.youtube.com/channel/UC2wcr8bK-dM88mLCOqik9ow)
 this is the repository for the code behind [the aleatoric learning channel](https://www.youtube.com/channel/UC2wcr8bK-dM88mLCOqik9ow).  
 It generates random semi-educational videos that are meant more as an exploration of chance and media in the age of information.  
 It begins by pulling a random wikipedia article, which is summarized using the online service SMMRY.  
