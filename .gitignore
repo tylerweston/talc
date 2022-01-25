@@ -19,4 +19,4 @@ mask_rcnn_coco.h5
 test_*.py
 *.wav
 # Our Rocky test image, don't need that in there, and some testing scripts
-rocky.jpg   
+rocky.jpg  

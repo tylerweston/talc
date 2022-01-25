@@ -33,6 +33,7 @@ def apply_motion(frames):
                 lambda clip: oneminusglitch(clip),
                 lambda clip: pixellate_in_effect(clip),
                 lambda clip: pixellate_out_effect(clip),
+                lambda clip: xor_frameglitch(clip),
             ]
             random_func = random.choice(video_motion_fx)
             frame = random_func(frame)
@@ -46,6 +47,34 @@ def oneminusglitch(clip):
         return frame
     return clip.fl(fl)
 
+last_frame_xor = np.empty([0])
+def xor_frameglitch(clip):
+    
+    def fl(gf, t):
+        global last_frame_xor
+        frame = gf(t)
+        if last_frame_xor.any():
+            lfx = last_frame_xor.copy()
+            np.random.shuffle(lfx)
+            frame = (frame + lfx) / 2
+        last_frame_xor = frame
+        return frame
+    return clip.fl(fl)
+
+#  This only really works for moving images so only apply to video clips
+last_frame_weird_dissolve = np.empty([0])
+def weirddissolve_frameglitch(clip):
+    
+    def fl(gf, t):
+        global last_frame_weird_dissolve
+        frame = gf(t)
+        if last_frame_weird_dissolve.any():
+            amt = np.random.rand(frame.shape[0], frame.shape[1], 1) / 16
+            frame = (frame * amt) + (last_frame_weird_dissolve * (1 - amt))
+        last_frame_weird_dissolve = frame
+        return frame
+    return clip.fl(fl)
+    
 def zoom_out_effect(clip, zoom_ratio=0.04):
     def effect(get_frame, t):
         img = Image.fromarray(get_frame(t))
@@ -113,6 +142,8 @@ def pixellate_in_effect(clip):
     # Thanks Mark Setchell
     def fl(gf, t):
         frame = gf(t)
+        if random.random() < 0.8:
+            return frame
         target = int(16 * ((t + 1) * 8))
         img = Image.fromarray(frame)
         img_small = img.resize((target,target),resample=Image.BILINEAR)
@@ -125,6 +156,8 @@ def pixellate_out_effect(clip):
     # Thanks Mark Setchell
     def fl(gf, t):
         frame = gf(t)
+        if random.random() < 0.8:
+            return frame
         target = 32 + int(16 + (t * 32))
         img = Image.fromarray(frame)
         img_small = img.resize((target,target),resample=Image.BILINEAR)
@@ -373,6 +406,8 @@ def get_random_clips(keywords, wiki_page_title):
                             lambda clip: clip.fx(vfx.time_mirror),
                             lambda clip: clip.fx(vfx.time_symmetrize),
                             lambda clip: clip.fx(oneminusglitch),
+                            lambda clip: clip.fx(xor_frameglitch),
+                            lambda clip: clip.fx(weirddissolve_frameglitch),
                         ]    
                         random_func = random.choice(video_fx_funcs)
                         random_youtube_subclip = random_func(random_youtube_subclip)
