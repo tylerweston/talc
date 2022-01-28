@@ -14,6 +14,7 @@ from images import apply_image_fx
 import re
 import os
 
+# Video FX
 
 def apply_motion(frames):
     # Note we can abstract this a bit since this is repeated code from what we do in video glitches
@@ -34,6 +35,7 @@ def apply_motion(frames):
                 lambda clip: pixellate_in_effect(clip),
                 lambda clip: pixellate_out_effect(clip),
                 lambda clip: xor_frameglitch(clip),
+                lambda clip: shuffle_img(clip),
             ]
             random_func = random.choice(video_motion_fx)
             frame = random_func(frame)
@@ -49,7 +51,6 @@ def oneminusglitch(clip):
 
 last_frame_xor = np.empty([0])
 def xor_frameglitch(clip):
-    
     def fl(gf, t):
         global last_frame_xor
         frame = gf(t)
@@ -64,7 +65,6 @@ def xor_frameglitch(clip):
 #  This only really works for moving images so only apply to video clips
 last_frame_weird_dissolve = np.empty([0])
 def weirddissolve_frameglitch(clip):
-    
     def fl(gf, t):
         global last_frame_weird_dissolve
         frame = gf(t)
@@ -165,6 +165,22 @@ def pixellate_out_effect(clip):
         return np.array(res)
     return clip.fl(fl)
 
+def shuffle_img(clip):
+    def fl(gf, t):
+        frame = gf(t)
+        nf = frame.copy()
+        chunk = random.randint(80000, 160000)
+        while True:
+            try:
+                nf = nf.reshape(-1,chunk)
+                break
+            except:
+                chunk = random.randint(80000, 160000)
+        np.random.shuffle(nf)
+        nf = nf.reshape(frame.shape)
+        return nf
+    return clip.fl(fl)
+
 def comp_video(images_list, random_video_clips, title, soundfile_name):
     # Create video
     with console.status("[bold green]Creating video...", spinner=spinner_choice):
@@ -196,6 +212,7 @@ def comp_video(images_list, random_video_clips, title, soundfile_name):
             align='Center', 
             size=(1280, 720)
         )
+
         title_duration = random.random() * 2.5 + 1
         video_clip = random.choice(frames)
         video_clip = video_clip.set_duration(title_duration)
@@ -209,7 +226,7 @@ def comp_video(images_list, random_video_clips, title, soundfile_name):
         # Add some silence to end of narration
         narration_clip = AudioFileClip(soundfile_name)
 
-        def silence_function(x):
+        def silence_function(_):
             return 0
 
         silence_clip = AudioClip(make_frame=silence_function, duration=3)
@@ -239,10 +256,7 @@ def comp_video(images_list, random_video_clips, title, soundfile_name):
         soundtrack_clip = fx.all.audio_fadein(soundtrack_clip, 2)
         soundtrack_clip = fx.all.audio_fadeout(soundtrack_clip, 2)
 
-        # soundtrack_clip = soundtrack_clip.fl(audio_noiseglitch)
-        # soundtrack_clip = soundtrack_clip.fl(audio_fuzz)
-
-        # Compose narration and sountrack
+        # Compose narration and soundtrack
         composite_narration_clip = CompositeAudioClip(
             [composite_narration_clip, soundtrack_clip]
         )
@@ -308,16 +322,9 @@ def get_random_clips(keywords, wiki_page_title):
             url = "https://www.youtube.com/results?search_query=" + query
             response = urllib.request.urlopen(url)
             html = response.read()
-            # try:
             video_ids = re.findall(r"watch\?v=(\S{11})", html.decode())
             if len(video_ids) == 0:
                 continue
-                # print(f"Found videos: {video_ids}")
-            # except:
-            #     continue
-            # video_ids now contains the files we can download
-            # so choose a random one and download it
-
             # Make a few tries from each collection
             video_tries = 0
             need_retry = True
@@ -371,7 +378,7 @@ def get_random_clips(keywords, wiki_page_title):
 
                 number_got += 1
                 # Grab a few snippets from the video
-                for _ in range(0, 2):
+                for _ in range(0, 3):
 
                     start_time = random.randint(0, max(1, youtube.length - 10))
                     end_time = min(youtube.length, start_time + random.randint(1, 3))
@@ -398,6 +405,7 @@ def get_random_clips(keywords, wiki_page_title):
                             lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(x, y , x2, y2)),
                             lambda clip: clip.fx(vfx.gamma_corr, gamma=param1),
                             lambda clip: clip.fx(vfx.invert_colors),
+                            lambda clip: clip.fx(vfx.lum_contrast),
                             lambda clip: clip.fx(vfx.mirror_x),
                             lambda clip: clip.fx(vfx.mirror_y),
                             lambda clip: clip.fx(vfx.painting, 1+(param1/2),param2/ 100.0),
@@ -408,6 +416,8 @@ def get_random_clips(keywords, wiki_page_title):
                             lambda clip: clip.fx(oneminusglitch),
                             lambda clip: clip.fx(xor_frameglitch),
                             lambda clip: clip.fx(weirddissolve_frameglitch),
+                            lambda clip: clip.fx(shuffle_img),
+
                         ]    
                         random_func = random.choice(video_fx_funcs)
                         random_youtube_subclip = random_func(random_youtube_subclip)

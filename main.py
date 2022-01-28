@@ -23,24 +23,27 @@ import os
 import sys
 import argparse
 from rich.console import Console
-console = Console(color_system="256")
+#from rich.highlighter import RegexHighlighter
+#console = Console(color_system="256")
 import random
 from version import __version__
 
 
 # This is all we need if we want to just get --help or --version so check for those first
-args = [s.lower() for s in sys.argv[1:]]
-if not ("--help" in args or "-h" in args or "--version" in args or "-v" in args):
+# args = [s.lower() for s in sys.argv[1:]]
+# print(args)
+# if not ("--help" in args or "-h" in args or "--version" in args or "-v" in args):
 
-    from summarize import *
-    from images import *
-    from video import *
-    
+console = Console(color_system="256")
+from summarize import *
+from images import *
+from video import *
 
-    import shutil
-    import openai
-    from moviepy.editor import *
-    from decouple import UndefinedValueError, config
+
+import shutil
+import openai
+from moviepy.editor import *
+from decouple import UndefinedValueError, config
 
 if USE_OPENAI:
     try:
@@ -49,6 +52,8 @@ if USE_OPENAI:
         console.print("[bold red]Error[/bold red]: Please set OPENAI_API_KEY in your .env file to use open ai")
         console.print(e)
         exit(0)
+    
+
 
 def make_video(use_article=None, args=None):
     # TALC video generator
@@ -92,8 +97,6 @@ def make_video(use_article=None, args=None):
     detect_and_make_masked_images(images_list)
 
     resize_images(images_list)
-
-
 
     movie_title = comp_video(images_list, random_video_clips, title, soundfile_name)
     generate_and_write_summary(movie_title, summary, keywords)
@@ -304,20 +307,80 @@ def main():
         make_video(use_article=args.article, args=args)
 
 def display_banner():
-    console.print("████████╗ █████╗ ██╗      ██████╗    ██╗   ██╗██╗██████╗ ███████╗ ██████╗    ")
-    console.print("╚══██╔══╝██╔══██╗██║     ██╔════╝    ██║   ██║██║██╔══██╗██╔════╝██╔═══██╗   ")
-    console.print("   ██║   ███████║██║     ██║         ██║   ██║██║██║  ██║█████╗  ██║   ██║   ")
-    console.print("   ██║   ██╔══██║██║     ██║         ╚██╗ ██╔╝██║██║  ██║██╔══╝  ██║   ██║   ")
-    console.print("   ██║   ██║  ██║███████╗╚██████╗     ╚████╔╝ ██║██████╔╝███████╗╚██████╔╝   ")
-    console.print("   ╚═╝   ╚═╝  ╚═╝╚══════╝ ╚═════╝      ╚═══╝  ╚═╝╚═════╝ ╚══════╝ ╚═════╝    ")
-    console.print("                                                                             ")
-    console.print(" ██████╗ ███████╗███╗   ██╗███████╗██████╗  █████╗ ████████╗ ██████╗ ██████╗ ")
-    console.print("██╔════╝ ██╔════╝████╗  ██║██╔════╝██╔══██╗██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗")
-    console.print("██║  ███╗█████╗  ██╔██╗ ██║█████╗  ██████╔╝███████║   ██║   ██║   ██║██████╔╝")
-    console.print("██║   ██║██╔══╝  ██║╚██╗██║██╔══╝  ██╔══██╗██╔══██║   ██║   ██║   ██║██╔══██╗")
-    console.print("╚██████╔╝███████╗██║ ╚████║███████╗██║  ██║██║  ██║   ██║   ╚██████╔╝██║  ██║")
-    console.print(" ╚═════╝ ╚══════╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝")
-    console.print("                                                                             ")                                          
+    # from rich.highlighter import RegexHighlighter
+    # from rich.theme import Theme
+    # class TitleHighlighter(RegexHighlighter):
+    #     base_style = "title."
+    #     highlights =[r"<solid>[▄█▀▐]",r"<drip1>[▓]",r'<drip2>[▒]', r'<drip3>[░]']
+    # theme = Theme({
+    #     "title.solid": "bold red",
+    #     "title.drip1": "bold magenta",
+    #     "title.drip2": "bold blue",
+    #     "title.drip3": "bold cyan",
+    # })
+    # title_higlighter = TitleHighlighter()
+    # with console.use_theme(theme):
+    #     console.print(title_higlighter("▄▄▄█████▓ ▄▄▄       ██▓     ▄████▄      ██▒   █▓ ██▓▓█████▄ ▓█████  ▒█████    "))
+    #     console.print(title_higlighter("▓  ██▒ ▓▒▒████▄    ▓██▒    ▒██▀ ▀█     ▓██░   █▒▓██▒▒██▀ ██▌▓█   ▀ ▒██▒  ██▒  "))
+    #     console.print(title_higlighter("▒ ▓██░ ▒░▒██  ▀█▄  ▒██░    ▒▓█    ▄     ▓██  █▒░▒██▒░██   █▌▒███   ▒██░  ██▒  "))
+    #     console.print(title_higlighter("░ ▓██▓ ░ ░██▄▄▄▄██ ▒██░    ▒▓▓▄ ▄██▒     ▒██ █░░░██░░▓█▄   ▌▒▓█  ▄ ▒██   ██░  "))
+    #     console.print(title_higlighter("  ▒██▒ ░  ▓█   ▓██▒░██████▒▒ ▓███▀ ░      ▒▀█░  ░██░░▒████▓ ░▒████▒░ ████▓▒░  "))
+    #     console.print(title_higlighter("  ▒ ░░    ▒▒   ▓▒█░░ ▒░▓  ░░ ░▒ ▒  ░      ░ ▐░  ░▓   ▒▒▓  ▒ ░░ ▒░ ░░ ▒░▒░▒░   "))
+    #     console.print(title_higlighter("    ░      ▒   ▒▒ ░░ ░ ▒  ░  ░  ▒         ░ ░░   ▒ ░ ░ ▒  ▒  ░ ░  ░  ░ ▒ ▒░   "))
+    #     console.print(title_higlighter("  ░        ░   ▒     ░ ░   ░                ░░   ▒ ░ ░ ░  ░    ░   ░ ░ ░ ▒    "))
+    #     console.print(title_higlighter("               ░  ░    ░  ░░ ░               ░   ░     ░       ░  ░    ░ ░    "))
+    #     console.print(title_higlighter("                           ░                ░        ░                        "))
+    #     console.print(title_higlighter("  ▄████ ▓█████  ███▄    █ ▓█████  ██▀███   ▄▄▄     ▄▄▄█████▓ ▒█████   ██▀███  "))
+    #     console.print(title_higlighter(" ██▒ ▀█▒▓█   ▀  ██ ▀█   █ ▓█   ▀ ▓██ ▒ ██▒▒████▄   ▓  ██▒ ▓▒▒██▒  ██▒▓██ ▒ ██▒"))
+    #     console.print(title_higlighter("▒██░▄▄▄░▒███   ▓██  ▀█ ██▒▒███   ▓██ ░▄█ ▒▒██  ▀█▄ ▒ ▓██░ ▒░▒██░  ██▒▓██ ░▄█ ▒"))
+    #     console.print(title_higlighter("░▓█  ██▓▒▓█  ▄ ▓██▒  ▐▌██▒▒▓█  ▄ ▒██▀▀█▄  ░██▄▄▄▄██░ ▓██▓ ░ ▒██   ██░▒██▀▀█▄  "))
+    #     console.print(title_higlighter("░▒▓███▀▒░▒████▒▒██░   ▓██░░▒████▒░██▓ ▒██▒ ▓█   ▓██▒ ▒██▒ ░ ░ ████▓▒░░██▓ ▒██▒"))
+    #     console.print(title_higlighter(" ░▒   ▒ ░░ ▒░ ░░ ▒░   ▒ ▒ ░░ ▒░ ░░ ▒▓ ░▒▓░ ▒▒   ▓▒█░ ▒ ░░   ░ ▒░▒░▒░ ░ ▒▓ ░▒▓░"))
+    #     console.print(title_higlighter("  ░   ░  ░ ░  ░░ ░░   ░ ▒░ ░ ░  ░  ░▒ ░ ▒░  ▒   ▒▒ ░   ░      ░ ▒ ▒░   ░▒ ░ ▒░"))
+    #     console.print(title_higlighter("░ ░   ░    ░      ░   ░ ░    ░     ░░   ░   ░   ▒    ░      ░ ░ ░ ▒    ░░   ░ "))
+    #     console.print(title_higlighter("      ░    ░  ░         ░    ░  ░   ░           ░  ░            ░ ░     ░     "))
+    #     console.print(title_higlighter("                                                                              "))
+    # exit()
+    console.print("▄▄▄█████▓ ▄▄▄       ██▓     ▄████▄      ██▒   █▓ ██▓▓█████▄ ▓█████  ▒█████    ")
+    console.print("▓  ██▒ ▓▒▒████▄    ▓██▒    ▒██▀ ▀█     ▓██░   █▒▓██▒▒██▀ ██▌▓█   ▀ ▒██▒  ██▒  ")
+    console.print("▒ ▓██░ ▒░▒██  ▀█▄  ▒██░    ▒▓█    ▄     ▓██  █▒░▒██▒░██   █▌▒███   ▒██░  ██▒  ")
+    console.print("░ ▓██▓ ░ ░██▄▄▄▄██ ▒██░    ▒▓▓▄ ▄██▒     ▒██ █░░░██░░▓█▄   ▌▒▓█  ▄ ▒██   ██░  ")
+    console.print("  ▒██▒ ░  ▓█   ▓██▒░██████▒▒ ▓███▀ ░      ▒▀█░  ░██░░▒████▓ ░▒████▒░ ████▓▒░  ")
+    console.print("  ▒ ░░    ▒▒   ▓▒█░░ ▒░▓  ░░ ░▒ ▒  ░      ░ ▐░  ░▓   ▒▒▓  ▒ ░░ ▒░ ░░ ▒░▒░▒░   ")
+    console.print("    ░      ▒   ▒▒ ░░ ░ ▒  ░  ░  ▒         ░ ░░   ▒ ░ ░ ▒  ▒  ░ ░  ░  ░ ▒ ▒░   ")
+    console.print("  ░        ░   ▒     ░ ░   ░                ░░   ▒ ░ ░ ░  ░    ░   ░ ░ ░ ▒    ")
+    console.print("               ░  ░    ░  ░░ ░               ░   ░     ░       ░  ░    ░ ░    ")
+    console.print("                           ░                ░        ░                        ")
+    console.print("  ▄████ ▓█████  ███▄    █ ▓█████  ██▀███   ▄▄▄     ▄▄▄█████▓ ▒█████   ██▀███  ")
+    console.print(" ██▒ ▀█▒▓█   ▀  ██ ▀█   █ ▓█   ▀ ▓██ ▒ ██▒▒████▄   ▓  ██▒ ▓▒▒██▒  ██▒▓██ ▒ ██▒")
+    console.print("▒██░▄▄▄░▒███   ▓██  ▀█ ██▒▒███   ▓██ ░▄█ ▒▒██  ▀█▄ ▒ ▓██░ ▒░▒██░  ██▒▓██ ░▄█ ▒")
+    console.print("░▓█  ██▓▒▓█  ▄ ▓██▒  ▐▌██▒▒▓█  ▄ ▒██▀▀█▄  ░██▄▄▄▄██░ ▓██▓ ░ ▒██   ██░▒██▀▀█▄  ")
+    console.print("░▒▓███▀▒░▒████▒▒██░   ▓██░░▒████▒░██▓ ▒██▒ ▓█   ▓██▒ ▒██▒ ░ ░ ████▓▒░░██▓ ▒██▒")
+    console.print(" ░▒   ▒ ░░ ▒░ ░░ ▒░   ▒ ▒ ░░ ▒░ ░░ ▒▓ ░▒▓░ ▒▒   ▓▒█░ ▒ ░░   ░ ▒░▒░▒░ ░ ▒▓ ░▒▓░")
+    console.print("  ░   ░  ░ ░  ░░ ░░   ░ ▒░ ░ ░  ░  ░▒ ░ ▒░  ▒   ▒▒ ░   ░      ░ ▒ ▒░   ░▒ ░ ▒░")
+    console.print("░ ░   ░    ░      ░   ░ ░    ░     ░░   ░   ░   ▒    ░      ░ ░ ░ ▒    ░░   ░ ")
+    console.print("      ░    ░  ░         ░    ░  ░   ░           ░  ░            ░ ░     ░     ")
+    console.print("                                                                              ")
+    # console.print(" ███████████   █████████   █████         █████████     █████   █████ █████ ██████████   ██████████    ███████         ")
+    # console.print("░█░░░███░░░█  ███░░░░░███ ░░███         ███░░░░░███   ░░███   ░░███ ░░███ ░░███░░░░███ ░░███░░░░░█  ███░░░░░███       ")
+    # console.print("░   ░███  ░  ░███    ░███  ░███        ███     ░░░     ░███    ░███  ░███  ░███   ░░███ ░███  █ ░  ███     ░░███      ")
+    # console.print("    ░███     ░███████████  ░███       ░███             ░███    ░███  ░███  ░███    ░███ ░██████   ░███      ░███      ")
+    # console.print("    ░███     ░███░░░░░███  ░███       ░███             ░░███   ███   ░███  ░███    ░███ ░███░░█   ░███      ░███      ")
+    # console.print("    ░███     ░███    ░███  ░███      █░░███     ███     ░░░█████░    ░███  ░███    ███  ░███ ░   █░░███     ███       ")
+    # console.print("    █████    █████   █████ ███████████ ░░█████████        ░░███      █████ ██████████   ██████████ ░░░███████░        ")
+    # console.print("   ░░░░░    ░░░░░   ░░░░░ ░░░░░░░░░░░   ░░░░░░░░░          ░░░      ░░░░░ ░░░░░░░░░░   ░░░░░░░░░░    ░░░░░░░          ")
+    # console.print("                                                                                                                      ")
+    # console.print("                                                                                                                      ")
+    # console.print("                                                                                                                      ")
+    # console.print("   █████████  ██████████ ██████   █████ ██████████ ███████████     █████████   ███████████    ███████    ███████████  ")
+    # console.print("  ███░░░░░███░░███░░░░░█░░██████ ░░███ ░░███░░░░░█░░███░░░░░███   ███░░░░░███ ░█░░░███░░░█  ███░░░░░███ ░░███░░░░░███ ")
+    # console.print(" ███     ░░░  ░███  █ ░  ░███░███ ░███  ░███  █ ░  ░███    ░███  ░███    ░███ ░   ░███  ░  ███     ░░███ ░███    ░███ ")
+    # console.print("░███          ░██████    ░███░░███░███  ░██████    ░██████████   ░███████████     ░███    ░███      ░███ ░██████████  ")
+    # console.print("░███    █████ ░███░░█    ░███ ░░██████  ░███░░█    ░███░░░░░███  ░███░░░░░███     ░███    ░███      ░███ ░███░░░░░███ ")
+    # console.print("░░███  ░░███  ░███ ░   █ ░███  ░░█████  ░███ ░   █ ░███    ░███  ░███    ░███     ░███    ░░███     ███  ░███    ░███ ")
+    # console.print(" ░░█████████  ██████████ █████  ░░█████ ██████████ █████   █████ █████   █████    █████    ░░░███████░   █████   █████")
+    # console.print("  ░░░░░░░░░  ░░░░░░░░░░ ░░░░░    ░░░░░ ░░░░░░░░░░ ░░░░░   ░░░░░ ░░░░░   ░░░░░    ░░░░░       ░░░░░░░    ░░░░░   ░░░░░ ")
+    # console.print("                                                                                                                      ")
     today = datetime.now()
     today_formatted = today.strftime("%Y-%m-%d")
     console.print(f" Tyler Weston 2021/2022, today: {today_formatted}, version# {__version__}")

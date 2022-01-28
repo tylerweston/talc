@@ -40,6 +40,7 @@ def get_images(keywords, wiki_page_title, passed_args):
             "print_urls": False,
             "silent_mode": True,
         }
+        console.print(arguments)
         paths = response.download(arguments)
         image_paths = paths  # Our list of all images we've downloaded
         images_list = []
