@@ -40,7 +40,7 @@ def get_images(keywords, wiki_page_title, passed_args):
             "print_urls": False,
             "silent_mode": True,
         }
-        console.print(arguments)
+        # console.print(arguments)
         paths = response.download(arguments)
         image_paths = paths  # Our list of all images we've downloaded
         images_list = []
@@ -80,7 +80,8 @@ def detect_and_make_masked_images(images_list):
             
         if image is None or second_image is None:
             # Error grabbing images!
-            console.print("[red]Warning[/red]: Either image or second_image was None")
+            # Who cares, just try again
+            # console.print("[red]Warning[/red]: Either image or second_image was None")
             continue
         # masked_image = cv2.bitwise_and(second_image, image, mask=thresh) if random.random() < 0.5 else cv2.bitwise_and(image, second_image, mask=thresh)
         mask_funcs = [

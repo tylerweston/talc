@@ -1,3 +1,9 @@
+"""
+The Aleatoric Learning Channel video generator -
+Generates new somewhat educational videos on random topics using images gathered from Google images,
+videos gathered from YouTube, and an article grabbed from Wikipedia.
+"""
+
 # TODO:
 #   - More sound options? Add some random sounds
 #   - Move audio stuff out of summarize

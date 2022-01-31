@@ -168,6 +168,8 @@ def pixellate_out_effect(clip):
 def shuffle_img(clip):
     def fl(gf, t):
         frame = gf(t)
+        if random.random() < 0.9:
+            return frame
         nf = frame.copy()
         chunk = random.randint(80000, 160000)
         while True:

@@ -115,6 +115,20 @@ def add_audio_effects(in_file, out_file):
         effected[i:i+step_size] = chunk
         i += step_size
     
+    stutter_window_size = random.randint(300, 800)
+    random_repeats = random.randint(4, 15)
+    i = 0
+    while i + (stutter_window_size * random_repeats) < audio.shape[0]:
+        update_step_size = stutter_window_size * random_repeats
+        if random.random() < 0.995:
+            i += update_step_size
+            continue
+        copy_from = effected[i:i+stutter_window_size]
+        for j in range(1, random_repeats + 1):
+            effected[i+(j*stutter_window_size):i+((j+1) * stutter_window_size)] = copy_from
+        stutter_window_size = random.randint(300, 800)
+        random_repeats = random.randint(4, 15)
+        i += update_step_size
 
 
     with sf.SoundFile(out_file, 'w', samplerate=sample_rate, channels=len(effected.shape)) as f:
@@ -169,8 +183,8 @@ def coqui_tts(text_to_synthesize, output_file):
     # text = "A quick little demo to see if we can get TTS up and running."
     speaker_idx = ""
     style_wav = ""
-    wavs = synthesizer.tts(text_to_synthesize, speaker_name=speaker_idx, style_wav=style_wav)
-    synthesizer.save_wav(wavs, output_file)
+    wav = synthesizer.tts(text_to_synthesize, speaker_name=speaker_idx, style_wav=style_wav)
+    synthesizer.save_wav(wav, output_file)
 
 
 def get_article(use_article=None):
@@ -282,7 +296,7 @@ def summarize_article(wiki_page_content):
     # # Read in remove keywords from file
     # with open("remove_keywords") as f:
     #     content = f.readlines()
-    # remove_keywords_list = [x.strip() for x in content]
+    # remove_keywords_list = [x.strip() for x in content]s
     remove_keywords_list = list(set(stopwords.words("english")))
 
     # Remove not useful keywords
