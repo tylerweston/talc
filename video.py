@@ -36,6 +36,7 @@ def apply_motion(frames):
                 lambda clip: pixellate_out_effect(clip),
                 lambda clip: xor_frameglitch(clip),
                 lambda clip: shuffle_img(clip),
+                lambda clip: swap_layers_glitch(clip),
             ]
             random_func = random.choice(video_motion_fx)
             frame = random_func(frame)
@@ -48,6 +49,18 @@ def oneminusglitch(clip):
         frame = 1 - frame;
         return frame
     return clip.fl(fl)
+
+
+def swap_layers_glitch(clip):
+    rng = np.random.default_rng()
+    def fl(gf, t):
+        if random.random() < 0.9:
+            return gf(t)
+        frame = gf(t)
+        frame = rng.permutation(frame, 2)
+        return frame    
+    return clip.fl(fl)
+
 
 last_frame_xor = np.empty([0])
 def xor_frameglitch(clip):
@@ -421,6 +434,7 @@ def get_random_clips(keywords, wiki_page_title):
                             lambda clip: clip.fx(xor_frameglitch),
                             lambda clip: clip.fx(weirddissolve_frameglitch),
                             lambda clip: clip.fx(shuffle_img),
+                            lambda clip: clip.fx(swap_layers_glitch),
 
                         ]    
                         random_func = random.choice(video_fx_funcs)
