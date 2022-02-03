@@ -1,5 +1,6 @@
 import random
 import math
+from unittest import result
 from PIL import Image
 from main import console, spinner_choice
 from moviepy.editor import *
@@ -37,6 +38,7 @@ def apply_motion(frames):
                 lambda clip: xor_frameglitch(clip),
                 lambda clip: shuffle_img(clip),
                 lambda clip: swap_layers_glitch(clip),
+                lambda clip: pan_shot_effect(clip, pan_amount=zoom_ratio),
             ]
             random_func = random.choice(video_motion_fx)
             frame = random_func(frame)
@@ -88,6 +90,23 @@ def weirddissolve_frameglitch(clip):
         return frame
     return clip.fl(fl)
     
+def pan_shot_effect(clip, pan_amount=0.04):
+    def effect(gf, t):
+        img = Image.fromarray(gf(t))
+        base_size = img.size
+        # Zoom in image 2x
+        new_size =[base_size[0] * 2, base_size[1] * 2]
+        img = img.resize(new_size, Image.LANCZOS)
+        # print(t)
+        x_from = base_size[0] - (base_size[0] * (t * pan_amount))
+        y_from = base_size[1] * 0.5
+        img = img.crop([x_from, y_from, x_from + base_size[0], y_from + base_size[1]]).resize(base_size, Image.LANCZOS)
+        result = np.array(img)
+        img.close()
+        return result
+    return clip.fl(effect)
+
+
 def zoom_out_effect(clip, zoom_ratio=0.04):
     def effect(get_frame, t):
         img = Image.fromarray(get_frame(t))
@@ -199,7 +218,8 @@ def shuffle_img(clip):
 def comp_video(images_list, random_video_clips, title, soundfile_name):
     # Create video
     with console.status("[bold green]Creating video...", spinner=spinner_choice):
-        title_card_clip = ImageClip("title_card.png", duration=2)
+        #title_card_clip = ImageClip("title_card.png", duration=2)
+        title_card_clip = VideoFileClip("title.mp4")
         # frames = [title_card_clip]
         frames = []
         for f in images_list:
@@ -435,7 +455,6 @@ def get_random_clips(keywords, wiki_page_title):
                             lambda clip: clip.fx(weirddissolve_frameglitch),
                             lambda clip: clip.fx(shuffle_img),
                             lambda clip: clip.fx(swap_layers_glitch),
-
                         ]    
                         random_func = random.choice(video_fx_funcs)
                         random_youtube_subclip = random_func(random_youtube_subclip)
