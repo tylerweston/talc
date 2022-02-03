@@ -44,6 +44,7 @@ console = Console(color_system="256")
 from summarize import *
 from images import *
 from video import *
+from make_title import make_new_title
 
 
 import shutil
@@ -63,16 +64,19 @@ if USE_OPENAI:
 
 def make_video(use_article=None, args=None):
     # TALC video generator
+    # Generate new random title
+    with console.status("[bold green]Making new intro vid...",spinner=spinner_choice):
+        make_new_title()
 
     # Narration
     title, wiki_page_title, wiki_page_content = get_article(use_article)
     keywords, summary, summary_hash_text = summarize_article(wiki_page_content)
 
-    # Images
-    images_list = get_images(keywords, wiki_page_title, passed_args=args)
-
     # Video clips
     random_video_clips = get_random_clips(keywords, wiki_page_title)
+
+    # Images
+    images_list = get_images(keywords, wiki_page_title, passed_args=args)
     
     # summary = open_ai_jank_summary(summary)
     # console.print(summary)

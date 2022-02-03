@@ -5,7 +5,8 @@ from PIL import Image
 from main import console, spinner_choice
 from moviepy.editor import *
 import moviepy.video.fx.all as vfx
-import pytube
+#import pytube
+from yt_dlp import YoutubeDL
 import urllib.parse
 import urllib.request
 import numpy as np
@@ -344,6 +345,7 @@ def get_random_clips(keywords, wiki_page_title):
 
     with console.status("[bold green]Getting random videos...", spinner=spinner_choice):
         while number_got < number_of_random_videos_to_get:
+            print(f"Got {number_got} of {number_of_random_videos_to_get}")
             # Search for list of videos
             random_keyword_combo = None
             if random.random() < 0.75:
@@ -366,8 +368,21 @@ def get_random_clips(keywords, wiki_page_title):
             while video_tries < 10 and need_retry:
                 rand_vid_id = random.choice(video_ids)
                 url = f"https://www.youtube.com/watch?v={rand_vid_id}"
+                ydl_opts = {'format': 'bestaudio/best',
+                            # 'postprocessors': [{
+                            #     'key': 'FFmpegExtractAudio',
+                            #     'preferredcodec': 'mp3',
+                            #     'preferredquality': '192',
+                            # }], 
+                            #'quiet': True
+                            }
+# with YoutubeDL(ydl_opts) as ydl:
+#     ydl.download(['https://www.youtube.com/watch?v=BaW_jenozKc'])
                 try:
-                    youtube = pytube.YouTube(url)
+                    youtube = YoutubeDL(ydl_opts)
+                    print(f"Trying to get video: {url}")
+                    youtube.download([url])
+                    print(f"Length: {youtube.length}")
                     if youtube.length > 600 or youtube.length < 5:
                         # print("Video too long")
                         video_tries += 1
