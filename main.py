@@ -8,6 +8,8 @@ videos gathered from YouTube, and an article grabbed from Wikipedia.
 #   - Fix ffmpeg errors, right now composing videos seems to randomly break sometimes with message
 #     Can't get next frame, or read 0 bytes/##### something like that. Looks like we are reading past
 #     the end of the file?
+#   - Write logs so that if the program crashes or something happens at some point, we can resume
+#     the video creation process where we left it off.
 #   
 #   - Skip age locked videos in YouTube
 #   - More sound options? Add some random sounds
@@ -75,24 +77,30 @@ def make_video(use_article=None, args=None):
 
     # Narration
     title, wiki_page_title, wiki_page_content = get_article(use_article)
-    keywords, summary, summary_hash_text = summarize_article(wiki_page_content)
+    keywords, summary, summary_hash_text = summarize_article(wiki_page_content, args.num_sentences)
+
+    # Images
+    images_list = get_images(keywords, wiki_page_title, passed_args=args)
 
     # Video clips
     console.print("[bold green]Getting video clips...")
     random_video_clips = get_random_clips(keywords, wiki_page_title)
     console.print("[bold green]Done![/bold green]")
-
-    # Images
-    images_list = get_images(keywords, wiki_page_title, passed_args=args)
     
     # summary = open_ai_jank_summary(summary)
     # console.print(summary)
 
     if args.use_openai:
         opening, closing = open_ai_stuff(wiki_page_title)
-        narration_text = wiki_page_title + "," + opening + ", " + summary + ", " + closing + ", ," + summary_hash_text
+        narration_text = wiki_page_title + "," \
+                        + opening + ", " \
+                        + summary + ", " \
+                        + closing + ", ," \
+                        + summary_hash_text
     else:
-        narration_text = wiki_page_title + ", " + summary + ", " + summary_hash_text
+        narration_text = wiki_page_title + ", " \
+                        + summary + ", " \
+                        + summary_hash_text
 
     make_narration(narration_text)
     soundfile_name = 'narration.wav'
@@ -100,7 +108,7 @@ def make_video(use_article=None, args=None):
         add_audio_effects('narration.wav', 'narration_effected.wav')
         soundfile_name = 'narration_effected.wav'
 
-    # Detect faces first since they won't be detectede if they are all glitched out first
+    # Detect faces first since they won't be detected if they are all glitched out first
     if not args.no_detect_faces:
         detect_and_sort_faces(images_list)
 
@@ -296,6 +304,14 @@ def main():
         type=int,
     )
     parser.add_argument(
+        "--num_sentences",
+        "-u",
+        help="Number of sentences to use to generate video",
+        default=NUM_SMMRY_SENTENCES_DEFAULT,
+        type=int,
+        
+    )
+    parser.add_argument(
         "--images_per_search",
         "-i",
         help="Number of images to search for per keyword",
@@ -394,6 +410,7 @@ def display_banner():
     today_formatted = today.strftime("%Y-%m-%d")
     console.print(f" Tyler Weston 2021/2022, today: {today_formatted}, version# {__version__}", justify="center")
     console.rule()
+    console.print()
 
 
 if __name__ == "__main__":
