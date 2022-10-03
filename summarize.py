@@ -246,7 +246,7 @@ def get_article(use_article=None):
 
     return title, wiki_page_title, wiki_page_content
 
-def summarize_article(wiki_page_content):
+def summarize_article(wiki_page_content, num_sentences):
     # Summarize
 
     # • SM_API_KEY=N	            Required, your API key.
@@ -272,7 +272,7 @@ def summarize_article(wiki_page_content):
     data = {"sm_api_input": wiki_page_content}
     params = {
         "SM_API_KEY": API_KEY,
-        "SM_LENGTH": NUM_SMMRY_SENTENCES,
+        "SM_LENGTH": num_sentences,
         "SM_KEYWORD_COUNT": 10,
         # "SM_QUOTE_AVOID": True,
         # "SM_QUESTION_AVOID": True,

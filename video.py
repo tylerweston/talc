@@ -1,11 +1,10 @@
 import random
 import math
-from unittest import result
 from PIL import Image
 from main import console, spinner_choice
 from moviepy.editor import *
 import moviepy.video.fx.all as vfx
-import pytube
+from yt_dlp import YoutubeDL
 import urllib.parse
 import urllib.request
 import numpy as np
@@ -16,6 +15,9 @@ import re
 import os
 
 # Video FX
+def reset_movie_data():
+    global all_video_clips
+    all_video_clips = []
 
 def apply_motion(frames):
     # Note we can abstract this a bit since this is repeated code from what we do in video glitches
@@ -52,7 +54,6 @@ def oneminusglitch(clip):
         return frame
     return clip.fl(fl)
 
-
 def swap_layers_glitch(clip):
     rng = np.random.default_rng()
     def fl(gf, t):
@@ -62,7 +63,6 @@ def swap_layers_glitch(clip):
         frame = rng.permutation(frame, 2)
         return frame    
     return clip.fl(fl)
-
 
 last_frame_xor = np.empty([0])
 def xor_frameglitch(clip):
@@ -105,7 +105,6 @@ def pan_shot_effect(clip, pan_amount=0.04):
         img.close()
         return result
     return clip.fl(effect)
-
 
 def zoom_out_effect(clip, zoom_ratio=0.04):
     def effect(get_frame, t):
@@ -312,6 +311,7 @@ def comp_video(images_list, random_video_clips, title, soundfile_name):
             logger=None,
         )
 
+
         # print("Glitching video...")
         # glitchart.mp4(f"finished/{movie_title}.mp4")
         # print("Done glitching video...")
@@ -326,11 +326,69 @@ def comp_video(images_list, random_video_clips, title, soundfile_name):
                 pass
     return movie_title
 
+all_video_clips = []
+def glitch_and_add_video(name):
+    global all_video_clips
+    original_clip = VideoFileClip(name)
+    for _ in range(0, 3):
+        start_time = random.randint(0, max(1, int(original_clip.duration - 10)))
+        end_time = min(original_clip.duration - 1, start_time + random.randint(1, 3))
+        random_youtube_subclip = original_clip.subclip(start_time, end_time)
+        random_youtube_subclip = random_youtube_subclip.set_fps(24)
+        random_youtube_subclip = random_youtube_subclip.resize(newsize=size)
+        # sometimes apply a moviepy vfx
+        if USE_MOVIEPY_VIDEO_FX and random.random() <= MOVIEPY_VIDEO_FX_PERCENT:
+            # choose a random effect from all available moviepy vfx
+            param1 = random.random()
+            param2 = random.random()
+            # choose random x and y values that are within the size of the clip
+            x = random.randint(0, size[0] - 1)
+            y = random.randint(0, size[1] - 1)
+            # choose another set of random x and y values that are within the size of the clip
+            x2 = random.randint(0, size[0] - 1)
+            y2 = random.randint(0, size[1] - 1)
+            video_fx_funcs = [
+                lambda clip: clip.fx(vfx.accel_decel, new_duration=None, abruptness=param1, soonness=param2),
+                lambda clip: clip.fx(vfx.blackwhite),
+                lambda clip: clip.fx(vfx.blackwhite, RGB='CRT_phosphor'),
+                lambda clip: clip.fx(vfx.colorx, param1),
+                lambda clip: clip.fx(vfx.freeze, total_duration=param1),
+                lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(x, y , x2, y2)),
+                lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(x, 0 , x2, size[1])),
+                lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(0, y , size[0], y2)),
+                lambda clip: clip.fx(vfx.gamma_corr, gamma=param1),
+                lambda clip: clip.fx(vfx.invert_colors),
+                lambda clip: clip.fx(vfx.lum_contrast),
+                lambda clip: clip.fx(vfx.mirror_x),
+                lambda clip: clip.fx(vfx.mirror_y),
+                lambda clip: clip.fx(vfx.painting, 1+(param1/2), param2/ 100.0),
+                lambda clip: clip.fx(vfx.speedx, factor=param1*2),
+                lambda clip: clip.fx(vfx.supersample, d=int((param1+1) * 10), nframes=int((param2+1) * 30)),               
+                lambda clip: clip.fx(vfx.time_mirror),
+                lambda clip: clip.fx(vfx.time_symmetrize),
+                lambda clip: clip.fx(oneminusglitch),
+                lambda clip: clip.fx(xor_frameglitch),
+                lambda clip: clip.fx(weirddissolve_frameglitch),
+                lambda clip: clip.fx(shuffle_img),
+                lambda clip: clip.fx(swap_layers_glitch),
+            ]    
+            random_func = random.choice(video_fx_funcs)
+            random_func_2 = random.choice(video_fx_funcs)
+            random_youtube_subclip_1 = random_func(random_youtube_subclip)
+            random_youtube_subclip_2 = random_func_2(random_youtube_subclip)
+            all_video_clips.append(random_youtube_subclip_1)
+            all_video_clips.append(random_youtube_subclip_2)
+            
+        else:
+            continue
+            # all_video_clips.append(random_youtube_subclip)
+            # # console.print("[red]Warning[/red]: Couldn't get video")
+        continue
+
 def get_random_clips(keywords, wiki_page_title):
-    # Grab random youtube video clips
-    random_video_clips = []
-    number_of_random_videos_to_get = 25
-    number_got = 0
+    global all_video_clips
+    number_of_random_videos_to_get = 75
+    # number_got = 0
 
     try:
         os.mkdir("videos")
@@ -338,130 +396,114 @@ def get_random_clips(keywords, wiki_page_title):
         # directory already exists
         pass
 
-    # TODO:
-    #   - Keep track of number of tries / keyword combos checked, once exhausted, if we don't have enough
-    #   videos, just keep going with whatever we have.
+    # with console.status("[bold green]Getting random videos...", spinner=spinner_choice):
+    while len(all_video_clips) < number_of_random_videos_to_get:
+        random_keyword_combo = None
+        if random.random() < 0.75:
+            random_keyword_combo = wiki_page_title + " " + random.choice(keywords)
+        else:
+            random_keyword_combo = (
+                random.choice(keywords) + " " + random.choice(keywords)
+            )
+        query = urllib.parse.quote(random_keyword_combo)
+        url = "https://www.youtube.com/results?search_query=" + query
+        response = urllib.request.urlopen(url)
+        html = response.read()
+        video_ids = re.findall(r"watch\?v=(\S{11})", html.decode())
+        if video_ids is None or len(video_ids) == 0:
+            continue
+        rand_vid_id = random.choice(video_ids)
+        url = f"https://www.youtube.com/watch?v={rand_vid_id}"
+        ydl_opts = {
+            'format': 'best[ext=mp4]', 
+            'quiet': True, 
+            'paths': {'home': './videos/'}, 
+            'outtmpl': {'default': '%(title)s.%(ext)s'},
+            'post_hooks': [glitch_and_add_video], 
+            }
 
-    with console.status("[bold green]Getting random videos...", spinner=spinner_choice):
-        while number_got < number_of_random_videos_to_get:
-            # Search for list of videos
-            random_keyword_combo = None
-            if random.random() < 0.75:
-                random_keyword_combo = wiki_page_title + " " + random.choice(keywords)
-            else:
-                random_keyword_combo = (
-                    random.choice(keywords) + " " + random.choice(keywords)
-                )
-            # print(f"Keywords: {random_keyword_combo}")
-            query = urllib.parse.quote(random_keyword_combo)
-            url = "https://www.youtube.com/results?search_query=" + query
-            response = urllib.request.urlopen(url)
-            html = response.read()
-            video_ids = re.findall(r"watch\?v=(\S{11})", html.decode())
-            if len(video_ids) == 0:
-                continue
-            # Make a few tries from each collection
-            video_tries = 0
-            need_retry = True
-            while video_tries < 10 and need_retry:
-                rand_vid_id = random.choice(video_ids)
-                url = f"https://www.youtube.com/watch?v={rand_vid_id}"
-                try:
-                    youtube = pytube.YouTube(url)
-                    if youtube.length > 600 or youtube.length < 5:
-                        # print("Video too long")
-                        video_tries += 1
-                        continue
-                    else:
-                        need_retry = False
-                except TypeError:
-                    video_tries += 1
+        with YoutubeDL(ydl_opts) as ydl:
+            # print(f"Attempting to download {url}")
+            info_dict = ydl.extract_info(url, download=False)
+            duration = info_dict.get('duration', None)
+            if duration is not None and int(duration) < 10 or int(duration) > 300:
                     continue
-
-            if need_retry:
-                continue
-
             try:
-                # video = youtube.streams.filter(res="720p").first()
-
-                video = youtube.streams.filter(mime_type="video/mp4").first()
+                ydl.download([url])
             except Exception as e:
-                console.print("[red]Warning[/red]: Can't get video of correct resolution")
-                console.print(str(e))
+                console.print(f"[red]Error[/red]: {e}")
                 continue
+    return all_video_clips
 
-            if video is not None:
-                path_to_download = f"videos/{video.default_filename}"
-                try:
-                    video.download("videos")
-                except urllib.error.HTTPError as e:
-                    console.print("[red]Warning[/red]: Error downloading video clips")
-                    console.print(str(e))
-                    continue
-                original_clip = VideoFileClip(path_to_download)
+def unified_glitch_pass(in_video, out_video):
+    """
+    a pass to be run on the final composed video that adds some
+    more overall glitches. Split the longer video into smaller scenes
+    and randomly add some effects to them!
+    """
+    with console.status("[bold green]Unified glitching video...", spinner=spinner_choice):
+        in_video = VideoFileClip(in_video)
+        duration = in_video.duration
+        sliced_total = 0
+        clips = []
+        while True:
+            # Get a chunk
+            chunk_duration = random.uniform(1, 7)
+            chunk_end = min(sliced_total + chunk_duration, duration)
+            chunk = in_video.subclip(sliced_total, chunk_end)
+            clips.append(chunk)
+            chunk_length = chunk_end - sliced_total
+            sliced_total += chunk_length
+            if sliced_total >= duration:
+                break
+        
+        # print("Doing glitching")
+        fxd_clips = []
+        for _clip in clips:
+            param1 = random.random()
+            param2 = random.random()
+            # choose random x and y values that are within the size of the clip
+            x = random.randint(0, size[0] - 1)
+            y = random.randint(0, size[1] - 1)
+            # choose another set of random x and y values that are within the size of the clip
+            x2 = random.randint(0, size[0] - 1)
+            y2 = random.randint(0, size[1] - 1)
+            video_fx_funcs = [
+                # lambda clip: clip.fx(vfx.accel_decel, new_duration=None, abruptness=param1, soonness=param2),
+                # lambda clip: clip.fx(vfx.blackwhite),
+                # lambda clip: clip.fx(vfx.blackwhite, RGB='CRT_phosphor'),
+                lambda clip: clip.fx(vfx.colorx, param1),
+                # lambda clip: clip.fx(vfx.freeze, total_duration=param1),
+                lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(x, y , x2, y2)),
+                lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(x, 0 , x2, size[1])),
+                lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(0, y , size[0], y2)),
+                lambda clip: clip.fx(vfx.gamma_corr, gamma=param1),
+                lambda clip: clip.fx(vfx.invert_colors),
+                lambda clip: clip.fx(vfx.lum_contrast),
+                lambda clip: clip.fx(vfx.mirror_x),
+                lambda clip: clip.fx(vfx.mirror_y),
+                lambda clip: clip.fx(vfx.painting, 1+(param1/2), param2/ 100.0),
+                # lambda clip: clip.fx(vfx.speedx, factor=param1*2),
+                # lambda clip: clip.fx(vfx.supersample, d=int((param1+1) * 10), nframes=int((param2+1) * 30)),               
+                # lambda clip: clip.fx(vfx.time_mirror),
+                # lambda clip: clip.fx(vfx.time_symmetrize),
+                lambda clip: clip.fx(oneminusglitch),
+                lambda clip: clip.fx(xor_frameglitch),
+                lambda clip: clip.fx(weirddissolve_frameglitch),
+                lambda clip: clip.fx(shuffle_img),
+                lambda clip: clip.fx(swap_layers_glitch),
+            ]    
+            clip_with_fx = random.choice(video_fx_funcs)(_clip)
+            fxd_clips.append(clip_with_fx)
 
-                # # TODO: This hangs when we try to compose the video later
-                # if GLITCH_VIDEOS:
-                #     if random.random() <= GLITCH_VIDEOS_PERCENT:
-                #         console.print("Glitching video...")
-                #         glitchart.mp4(f'"{path_to_download}"', inplace=True)
-                #         console.print("Done glitching video...")
-                # # # TODO:
-                # # # Now, we have a glitched copy and a regular copy, we should splice MOSTLY the unglitched copy,
-                # # # but also, a little bit of the glitched copy together, add the audio back in, and press it one
-                # # # more time?
-
-                number_got += 1
-                # Grab a few snippets from the video
-                for _ in range(0, 3):
-
-                    start_time = random.randint(0, max(1, youtube.length - 10))
-                    end_time = min(youtube.length, start_time + random.randint(1, 3))
-                    random_youtube_subclip = original_clip.subclip(start_time, end_time)
-                    random_youtube_subclip = random_youtube_subclip.set_fps(24)
-                    random_youtube_subclip = random_youtube_subclip.resize(newsize=size)
-                    # sometimes apply a moviepy vfx
-                    if USE_MOVIEPY_VIDEO_FX and random.random() <= MOVIEPY_VIDEO_FX_PERCENT:
-                        # choose a random effect from all available moviepy vfx
-                        param1 = random.random()
-                        param2 = random.random()
-                        # choose random x and y values that are within the size of the clip
-                        x = random.randint(0, size[0] - 1)
-                        y = random.randint(0, size[1] - 1)
-                        # choose another set of random x and y values that are within the size of the clip
-                        x2 = random.randint(0, size[0] - 1)
-                        y2 = random.randint(0, size[1] - 1)
-                        video_fx_funcs = [
-                            lambda clip: clip.fx(vfx.accel_decel, new_duration=None, abruptness=param1, soonness=param2),
-                            lambda clip: clip.fx(vfx.blackwhite),
-                            lambda clip: clip.fx(vfx.blackwhite, RGB='CRT_phosphor'),
-                            lambda clip: clip.fx(vfx.colorx, param1),
-                            lambda clip: clip.fx(vfx.freeze, total_duration=param1),
-                            lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(x, y , x2, y2)),
-                            lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(x, 0 , x2, size[1])),
-                            lambda clip: clip.fx(vfx.freeze_region, t=param1, region=(0, y , size[0], y2)),
-                            lambda clip: clip.fx(vfx.gamma_corr, gamma=param1),
-                            lambda clip: clip.fx(vfx.invert_colors),
-                            lambda clip: clip.fx(vfx.lum_contrast),
-                            lambda clip: clip.fx(vfx.mirror_x),
-                            lambda clip: clip.fx(vfx.mirror_y),
-                            lambda clip: clip.fx(vfx.painting, 1+(param1/2), param2/ 100.0),
-                            lambda clip: clip.fx(vfx.speedx, factor=param1*2),
-                            lambda clip: clip.fx(vfx.supersample, d=int((param1+1) * 10), nframes=int((param2+1) * 30)),               
-                            lambda clip: clip.fx(vfx.time_mirror),
-                            lambda clip: clip.fx(vfx.time_symmetrize),
-                            lambda clip: clip.fx(oneminusglitch),
-                            lambda clip: clip.fx(xor_frameglitch),
-                            lambda clip: clip.fx(weirddissolve_frameglitch),
-                            lambda clip: clip.fx(shuffle_img),
-                            lambda clip: clip.fx(swap_layers_glitch),
-                        ]    
-                        random_func = random.choice(video_fx_funcs)
-                        random_youtube_subclip = random_func(random_youtube_subclip)
-                    random_video_clips.append(random_youtube_subclip)
-            else:
-                console.print("[red]Warning[/red]: Couldn't get video")
-                continue
-
-    console.print(f"Got [bold green]{len(random_video_clips)}[/bold green] videos")
-    return random_video_clips
+        # print("Writing video")
+        out_clips = concatenate_videoclips(fxd_clips, method="compose")
+        out_clips.write_videofile(
+            out_video,
+            codec="libx264",
+            audio_codec="aac",
+            temp_audiofile="temp-audio.m4a",
+            remove_temp=True,
+            fps=24,
+            logger=None,
+        )
