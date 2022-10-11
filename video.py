@@ -54,6 +54,18 @@ def oneminusglitch(clip):
         return frame
     return clip.fl(fl)
 
+# def black_spots_glitch(clip):
+#     rng = np.random.default_rng()
+#     def fl(gf, t):
+#         frame = gf(t)
+#         print(frame.shape)
+#         # frame = rng.permutation(frame, 1)
+#         frame = frame.reshape(-1, 4)
+#         frame = rng.shuffle(frame)
+#         frame = frame.flatten()
+#         return frame
+#     return clip.fl(fl)
+
 def swap_layers_glitch(clip):
     rng = np.random.default_rng()
     def fl(gf, t):
@@ -425,7 +437,7 @@ def get_random_clips(keywords, wiki_page_title):
         with YoutubeDL(ydl_opts) as ydl:
             # print(f"Attempting to download {url}")
             info_dict = ydl.extract_info(url, download=False)
-            duration = info_dict.get('duration', None)
+            duration = info_dict.get('duration', 0) # Was none instead of 0
             if duration is not None and int(duration) < 10 or int(duration) > 300:
                     continue
             try:
@@ -492,6 +504,7 @@ def unified_glitch_pass(in_video, out_video):
                 lambda clip: clip.fx(weirddissolve_frameglitch),
                 lambda clip: clip.fx(shuffle_img),
                 lambda clip: clip.fx(swap_layers_glitch),
+                # lambda clip: clip.fx(black_spots_glitch),
             ]    
             clip_with_fx = random.choice(video_fx_funcs)(_clip)
             fxd_clips.append(clip_with_fx)

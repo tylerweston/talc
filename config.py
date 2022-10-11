@@ -5,11 +5,11 @@ spinner_choice = random.choice(['aesthetic', 'arc', 'arrow3', 'betaWave', 'ballo
 
 # TODO: Replace these removed soundtracks
 soundtrack_files = [
-    "talc_soundtrack.mp3",
-    "talc_soundtrack2.mp3",
-    "talc_soundtrack3.mp3",
-    "talc_soundtrack4.mp3",
-    # "talc_soundtrack5.mp3",
+    # "talc_soundtrack.mp3",
+    # "talc_soundtrack2.mp3",
+    # "talc_soundtrack3.mp3",
+    # "talc_soundtrack4.mp3",
+    "talc_soundtrack5.mp3",
 ]
 
 prog = "TALC"
@@ -23,7 +23,7 @@ USE_OPENAI = False
 DETECT_FACES = True
 # noise_glitching = False
 
-NUM_SMMRY_SENTENCES_DEFAULT = 8
+NUM_SMMRY_SENTENCES_DEFAULT = 6
 MINIMUM_ARTICLE_LENGTH = 10000
 
 # GLITCH_VIDEOS = False
